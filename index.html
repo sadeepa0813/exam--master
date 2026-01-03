@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Master SL - Student Dashboard</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    
+    <style>
+        /* Install App Button */
+        .install-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #4361ee, #7209b7);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(67, 97, 238, 0.4);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .install-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(67, 97, 238, 0.6);
+        }
+        
+        /* Loading Animation */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0f172a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.3s ease;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #4361ee;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            color: #94a3b8;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        
+        /* Notification Badge */
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #f72585;
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Effects Canvas -->
+    <canvas id="effectCanvas"></canvas>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading Exam Master...</div>
+    </div>
+
+    <!-- Install App Button -->
+    <button class="install-btn" id="installButton">
+        <i class="fas fa-download"></i> Install App
+    </button>
+
+    <!-- Header -->
+    <header class="main-header">
+        <div class="header-container">
+            <div class="logo-section">
+                <div class="logo">
+                    <i class="fas fa-graduation-cap"></i>
+                    <h1>Exam Master SL</h1>
+                </div>
+                <p class="subtitle">Your Ultimate Exam Preparation Companion</p>
+            </div>
+            
+            <div class="header-controls">
+                <div class="notification-icon" id="notificationIcon">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge" id="notifBadge">0</span>
+                </div>
+                
+                <div class="time-display">
+                    <div id="currentDate" class="date">-- --- ----</div>
+                    <div id="currentTime" class="time">--:--</div>
+                </div>
+                
+                <a href="admin.html" class="admin-link">
+                    <i class="fas fa-user-shield"></i> Admin
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Countdown Dashboard -->
+        <section class="dashboard-section">
+            <div class="section-header">
+                <h2><i class="fas fa-clock"></i> Exam Countdown</h2>
+                <p>Track your upcoming exams with live countdowns</p>
+            </div>
+            
+            <div class="countdown-grid" id="examGrid">
+                <!-- Exams will be loaded here -->
+                <div class="exam-card loading">
+                    <div class="exam-card-content">
+                        <div class="skeleton-line" style="width: 70%; height: 24px; margin-bottom: 12px;"></div>
+                        <div class="skeleton-line" style="width: 50%; height: 16px; margin-bottom: 20px;"></div>
+                        <div class="timer-skeleton">
+                            <div class="skeleton-circle"></div>
+                            <div class="skeleton-circle"></div>
+                            <div class="skeleton-circle"></div>
+                            <div class="skeleton-circle"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Chat & Community -->
+        <section class="chat-section">
+            <div class="section-header">
+                <h2><i class="fas fa-comments"></i> Study Community</h2>
+                <p>Connect and collaborate with fellow students</p>
+            </div>
+            
+            <div class="chat-container">
+                <div class="chat-box" id="chatBox">
+                    <!-- Welcome message -->
+                    <div class="chat-welcome">
+                        <div class="welcome-icon">
+                            <i class="fas fa-comment-alt"></i>
+                        </div>
+                        <h3>Welcome to Study Community!</h3>
+                        <p>Start chatting with fellow students. Share notes, ask questions, and study together.</p>
+                    </div>
+                </div>
+
+                <div class="chat-controls">
+                    <div class="input-group">
+                        <input type="text" id="chatName" class="chat-input" placeholder="Your Name" maxlength="30">
+                    </div>
+                    <div class="input-group message-input">
+                        <input type="text" id="chatMessage" class="chat-input" placeholder="Type your message..." maxlength="500">
+                        <button class="send-btn" onclick="sendComment()">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="chat-info">
+                    <i class="fas fa-info-circle"></i>
+                    <span>All messages are public. Please maintain respectful communication.</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Notification Modal -->
+    <div id="notifModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-bell"></i> Important Notifications</h3>
+                <button class="modal-close" onclick="closeNotifModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalNotifContent">
+                <div class="loading-notifications">
+                    <div class="spinner"></div>
+                    <p>Loading notifications...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="main-footer">
+        <div class="footer-container">
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <h3>Exam Master SL</h3>
+                    <p>Advanced platform designed for Sri Lankan students to excel in their examinations with smart tools and community support.</p>
+                    <div class="app-features">
+                        <span class="feature-badge">
+                            <i class="fas fa-bolt"></i> Fast
+                        </span>
+                        <span class="feature-badge">
+                            <i class="fas fa-shield-alt"></i> Secure
+                        </span>
+                        <span class="feature-badge">
+                            <i class="fas fa-mobile-alt"></i> PWA
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="footer-col">
+                    <h3>Quick Links</h3>
+                    <ul class="footer-links">
+                        <li><a href="#"><i class="fas fa-home"></i> Home</a></li>
+                        <li><a href="#"><i class="fas fa-book"></i> Syllabus</a></li>
+                        <li><a href="#"><i class="fas fa-file-pdf"></i> Past Papers</a></li>
+                        <li><a href="admin.html"><i class="fas fa-user-cog"></i> Admin Panel</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-col">
+                    <h3>Connect With Us</h3>
+                    <ul class="footer-links">
+                        <li><a href="#"><i class="fab fa-facebook"></i> Facebook</a></li>
+                        <li><a href="#"><i class="fab fa-youtube"></i> YouTube</a></li>
+                        <li><a href="#"><i class="fab fa-telegram"></i> Telegram</a></li>
+                        <li><a href="#"><i class="fab fa-whatsapp"></i> WhatsApp</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-col">
+                    <h3>Download Our App</h3>
+                    <p>Install Exam Master as a Progressive Web App for better experience.</p>
+                    <button class="install-app-btn" onclick="installApp()">
+                        <i class="fas fa-download"></i> Install Now
+                    </button>
+                </div>
+            </div>
+            
+            <div class="copyright">
+                &copy; 2024 Exam Master SL. All rights reserved.
+                <span style="color: #4361ee;">♥</span> Made for Sri Lankan Students
+            </div>
+        </div>
+    </footer>
+
+    <!-- Main JavaScript -->
+    <script type="module" src="app.js"></script>
+    
+    <!-- PWA Installation & Time Update -->
+    <script>
+        // PWA Installation
+        let deferredPrompt;
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installButton').style.display = 'flex';
+        });
+        
+        function installApp() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted the install prompt');
+                        document.getElementById('installButton').style.display = 'none';
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        }
+        
+        window.installApp = installApp;
+        
+        // Time Update Function
+        function updateTime() {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            const timeStr = now.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            
+            document.getElementById('currentDate').textContent = dateStr;
+            document.getElementById('currentTime').textContent = timeStr;
+        }
+        
+        // Initialize
+        updateTime();
+        setInterval(updateTime, 1000);
+        
+        // Hide loading overlay after 2 seconds
+        setTimeout(() => {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }, 2000);
+        
+        // Notification icon click
+        document.getElementById('notificationIcon').addEventListener('click', function() {
+            if (window.openNotifModal) {
+                window.openNotifModal();
+            }
+        });
+        
+        // Modal close on outside click
+        document.getElementById('notifModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeNotifModal();
+            }
+        });
+        
+        // Global modal close function
+        window.closeNotifModal = function() {
+            document.getElementById('notifModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+        
+        // Modal open function
+        window.openNotifModal = function() {
+            document.getElementById('notifModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+    </script>
+</body>
+</html>
