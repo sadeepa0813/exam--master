@@ -1,6 +1,5 @@
 // ==========================================
-// EXAM MASTER ADMIN - FIXED VERSION
-// Professional Admin Panel with Database Connection
+// EXAM MASTER ADMIN - COMPLETE WORKING VERSION
 // ==========================================
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
@@ -14,50 +13,6 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Global Variables
 let currentUser = null;
-let isDatabaseConnected = false;
-
-// ==========================================
-// DATABASE CONNECTION TEST
-// ==========================================
-async function testDatabaseConnection() {
-    try {
-        showLoading(true);
-        
-        // Test connection by fetching a simple query
-        const { data, error } = await supabase
-            .from('exams')
-            .select('count')
-            .limit(1);
-        
-        if (error) {
-            console.error('Database connection failed:', error);
-            showToast('Database connection failed. Please check your internet connection and try again.', 'error');
-            isDatabaseConnected = false;
-            return false;
-        }
-        
-        console.log('Database connection successful');
-        isDatabaseConnected = true;
-        
-        // Update database status indicator
-        const dbStatus = document.getElementById('dbStatus');
-        if (dbStatus) {
-            dbStatus.style.background = '#4cc9f0';
-            dbStatus.classList.add('active');
-        }
-        
-        showToast('Connected to database successfully!', 'success');
-        return true;
-        
-    } catch (error) {
-        console.error('Connection test error:', error);
-        isDatabaseConnected = false;
-        showToast('Failed to connect to database.', 'error');
-        return false;
-    } finally {
-        showLoading(false);
-    }
-}
 
 // ==========================================
 // AUTHENTICATION SYSTEM
@@ -74,13 +29,6 @@ async function adminLogin() {
     showLoading(true);
     
     try {
-        // First test database connection
-        const isConnected = await testDatabaseConnection();
-        if (!isConnected) {
-            showToast('Cannot connect to database. Please try again later.', 'error');
-            return;
-        }
-        
         // Attempt login
         const { data, error } = await supabase.auth.signInWithPassword({
             email: email,
@@ -88,13 +36,8 @@ async function adminLogin() {
         });
         
         if (error) {
-            if (error.message.includes('Invalid login credentials')) {
-                showToast('Invalid email or password', 'error');
-            } else if (error.message.includes('Email not confirmed')) {
-                showToast('Please verify your email address first', 'warning');
-            } else {
-                showToast('Login failed: ' + error.message, 'error');
-            }
+            console.error('Login error:', error);
+            showToast('Invalid email or password', 'error');
             return;
         }
         
@@ -119,7 +62,7 @@ async function adminLogin() {
         
     } catch (error) {
         console.error('Login error:', error);
-        showToast('An unexpected error occurred during login', 'error');
+        showToast('An unexpected error occurred', 'error');
     } finally {
         showLoading(false);
     }
@@ -148,20 +91,18 @@ async function loadAllData() {
     showLoading(true);
     
     try {
-        // Load data in parallel
         await Promise.all([
             loadDashboardStats(),
             loadExams(),
             loadNotifications(),
             loadChatData(),
-            loadRecentActivity()
+            loadRecentActivity(),
+            loadEffectsStatus()
         ]);
         
-        console.log('All data loaded successfully');
-        
     } catch (error) {
-        console.error('Error loading all data:', error);
-        showToast('Failed to load some data. Please refresh.', 'warning');
+        console.error('Error loading data:', error);
+        showToast('Failed to load data', 'warning');
     } finally {
         showLoading(false);
     }
@@ -191,9 +132,8 @@ async function loadDashboardStats() {
         document.getElementById('statNotifications').textContent = notificationsCount || 0;
         document.getElementById('statComments').textContent = commentsCount || 0;
         
-        // Simulate active users (for demo)
-        const activeUsers = Math.floor(Math.random() * 100) + 50;
-        document.getElementById('statUsers').textContent = activeUsers;
+        // Simulate active users
+        document.getElementById('statUsers').textContent = Math.floor(Math.random() * 100) + 50;
         
     } catch (error) {
         console.error('Error loading dashboard stats:', error);
@@ -235,10 +175,10 @@ async function loadExams() {
                         </span>
                     </td>
                     <td class="actions">
-                        <button class="btn-icon" onclick="toggleExamStatus(${exam.id}, '${exam.status}')">
+                        <button class="btn-icon" onclick="toggleExamStatus('${exam.id}', '${exam.status}')">
                             <i class="fas fa-${exam.status === 'enabled' ? 'eye-slash' : 'eye'}"></i>
                         </button>
-                        <button class="btn-icon btn-danger" onclick="deleteExam(${exam.id})">
+                        <button class="btn-icon btn-danger" onclick="deleteExam('${exam.id}')">
                             <i class="fas fa-trash"></i>
                         </button>
                     </td>
@@ -284,26 +224,28 @@ async function loadNotifications() {
                     <thead>
                         <tr>
                             <th>Title</th>
-                            <th>Type</th>
                             <th>Date</th>
+                            <th>Priority</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${data.map(notif => {
                             const date = new Date(notif.created_at);
-                            const type = notif.image_url ? 'Image' : notif.pdf_url ? 'PDF' : 'Text';
-                            
                             return `
                                 <tr>
                                     <td>${notif.title}</td>
-                                    <td>${type}</td>
                                     <td>${date.toLocaleDateString('en-US')}</td>
+                                    <td>
+                                        <span class="status-badge ${notif.priority === 3 ? 'status-active' : 'status-inactive'}">
+                                            ${notif.priority === 3 ? 'High' : notif.priority === 2 ? 'Medium' : 'Low'}
+                                        </span>
+                                    </td>
                                     <td class="actions">
-                                        <button class="btn-icon" onclick="viewNotification(${notif.id})">
+                                        <button class="btn-icon" onclick="viewNotification('${notif.id}')">
                                             <i class="fas fa-eye"></i>
                                         </button>
-                                        <button class="btn-icon btn-danger" onclick="deleteNotification(${notif.id})">
+                                        <button class="btn-icon btn-danger" onclick="deleteNotification('${notif.id}')">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </td>
@@ -319,7 +261,6 @@ async function loadNotifications() {
                 <div class="empty-state">
                     <i class="far fa-bell-slash"></i>
                     <p>No active notifications</p>
-                    <small>Create your first notification using the form above</small>
                 </div>
             `;
         }
@@ -363,27 +304,13 @@ async function loadChatData() {
                     <td>${comment.ip_address || 'N/A'}</td>
                     <td>${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</td>
                     <td class="actions">
-                        <button class="btn-icon" onclick="viewChatMessage(${comment.id})">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        <button class="btn-icon btn-danger" onclick="deleteChatMessage(${comment.id})">
+                        <button class="btn-icon btn-danger" onclick="deleteChatMessage('${comment.id}')">
                             <i class="fas fa-trash"></i>
                         </button>
                     </td>
                 `;
                 tableBody.appendChild(row);
             });
-            
-            // Update stats
-            document.getElementById('totalMessages').textContent = data.length;
-            document.getElementById('todayMessages').textContent = data.filter(c => 
-                new Date(c.created_at).toDateString() === new Date().toDateString()
-            ).length;
-            
-            // Count unique users
-            const uniqueUsers = [...new Set(data.map(c => c.user_name))].length;
-            document.getElementById('activeUsers').textContent = uniqueUsers;
-            
         } else {
             tableBody.innerHTML = `
                 <tr>
@@ -410,30 +337,27 @@ async function loadRecentActivity() {
             .from('exams')
             .select('*')
             .order('created_at', { ascending: false })
-            .limit(5);
+            .limit(3);
         
         // Get recent notifications
         const { data: notifications } = await supabase
             .from('notifications')
             .select('*')
             .order('created_at', { ascending: false })
-            .limit(5);
+            .limit(3);
         
-        // Combine and sort activities
         const activities = [
             ...(exams?.map(exam => ({
-                type: 'exam',
-                title: `New exam added: ${exam.batch_name}`,
+                title: `New exam: ${exam.batch_name}`,
                 time: new Date(exam.created_at),
                 icon: 'fas fa-calendar-plus'
             })) || []),
             ...(notifications?.map(notif => ({
-                type: 'notification',
-                title: `Notification sent: ${notif.title}`,
+                title: `Notification: ${notif.title}`,
                 time: new Date(notif.created_at),
                 icon: 'fas fa-bell'
             })) || [])
-        ].sort((a, b) => b.time - a.time).slice(0, 10);
+        ].sort((a, b) => b.time - a.time).slice(0, 5);
         
         activityList.innerHTML = activities.map(activity => `
             <div class="activity-item">
@@ -452,8 +376,30 @@ async function loadRecentActivity() {
     }
 }
 
+async function loadEffectsStatus() {
+    try {
+        const { data, error } = await supabase
+            .from('site_settings')
+            .select('*')
+            .in('setting_key', ['snow_effect', 'confetti_effect']);
+        
+        if (error) throw error;
+        
+        if (data) {
+            data.forEach(setting => {
+                const checkbox = document.getElementById(`${setting.setting_key.split('_')[0]}Effect`);
+                if (checkbox) {
+                    checkbox.checked = setting.is_enabled;
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Error loading effects status:', error);
+    }
+}
+
 // ==========================================
-// CRUD OPERATIONS
+// CRUD OPERATIONS - WORKING DELETE FUNCTIONS
 // ==========================================
 async function addNewExam() {
     const name = document.getElementById('examName')?.value.trim();
@@ -472,27 +418,15 @@ async function addNewExam() {
             batch_name: name,
             exam_date: dateTime + ':00+05:30',
             description: description,
-            status: 'enabled',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            status: 'enabled'
         };
-        
-        console.log('Inserting exam data:', examData);
         
         const { data, error } = await supabase
             .from('exams')
             .insert([examData])
             .select();
         
-        if (error) {
-            console.error('Supabase error:', error);
-            if (error.message.includes('check constraint')) {
-                showToast('Please check the exam status (should be "enabled" or "disabled")', 'error');
-            } else {
-                showToast('Failed to add exam: ' + error.message, 'error');
-            }
-            return;
-        }
+        if (error) throw error;
         
         showToast('Exam added successfully!', 'success');
         
@@ -509,6 +443,48 @@ async function addNewExam() {
     } catch (error) {
         console.error('Error adding exam:', error);
         showToast('Failed to add exam: ' + error.message, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function deleteExam(id) {
+    console.log('Deleting exam with ID:', id);
+    
+    if (!await showConfirmation('Are you sure you want to delete this exam? This action cannot be undone.')) {
+        return;
+    }
+    
+    showLoading(true);
+    
+    try {
+        // First get exam info for message
+        const { data: exam, error: fetchError } = await supabase
+            .from('exams')
+            .select('batch_name')
+            .eq('id', id)
+            .single();
+        
+        if (fetchError) throw fetchError;
+        
+        // Delete the exam
+        const { error } = await supabase
+            .from('exams')
+            .delete()
+            .eq('id', id);
+        
+        if (error) throw error;
+        
+        showToast(`"${exam.batch_name}" deleted successfully!`, 'success');
+        
+        // Refresh data
+        await loadExams();
+        await loadDashboardStats();
+        await loadRecentActivity();
+        
+    } catch (error) {
+        console.error('Error deleting exam:', error);
+        showToast('Failed to delete exam: ' + error.message, 'error');
     } finally {
         showLoading(false);
     }
@@ -542,40 +518,11 @@ async function toggleExamStatus(id, currentStatus) {
     }
 }
 
-async function deleteExam(id) {
-    if (!await showConfirmation('Are you sure you want to delete this exam? This action cannot be undone.')) {
-        return;
-    }
-    
-    showLoading(true);
-    
-    try {
-        const { error } = await supabase
-            .from('exams')
-            .delete()
-            .eq('id', id);
-        
-        if (error) throw error;
-        
-        showToast('Exam deleted successfully', 'success');
-        await loadExams();
-        await loadDashboardStats();
-        
-    } catch (error) {
-        console.error('Error deleting exam:', error);
-        showToast('Failed to delete exam', 'error');
-    } finally {
-        showLoading(false);
-    }
-}
-
 async function sendNotification() {
     const title = document.getElementById('notificationTitle')?.value.trim();
     const message = document.getElementById('notificationMessage')?.value.trim();
     const isImportant = document.getElementById('notificationImportant')?.checked;
     const isPersistent = document.getElementById('notificationPersistent')?.checked;
-    const imageFile = document.getElementById('notificationImage')?.files[0];
-    const pdfFile = document.getElementById('notificationPdf')?.files[0];
     
     if (!title) {
         showToast('Please enter a notification title', 'error');
@@ -585,57 +532,18 @@ async function sendNotification() {
     showLoading(true);
     
     try {
-        let imageUrl = null;
-        let pdfUrl = null;
+        const notificationData = {
+            title: title,
+            message: message,
+            is_active: true,
+            show_until_dismissed: isPersistent,
+            priority: isImportant ? 3 : 1,
+            created_by: currentUser?.email || 'admin'
+        };
         
-        // Upload image if selected
-        if (imageFile) {
-            const fileName = `image_${Date.now()}_${imageFile.name.replace(/\s+/g, '_')}`;
-            const { data, error } = await supabase.storage
-                .from('uploads')
-                .upload(`notifications/${fileName}`, imageFile);
-            
-            if (error) throw error;
-            
-            // Get public URL
-            const { data: { publicUrl } } = supabase.storage
-                .from('uploads')
-                .getPublicUrl(`notifications/${fileName}`);
-            
-            imageUrl = publicUrl;
-        }
-        
-        // Upload PDF if selected
-        if (pdfFile) {
-            const fileName = `pdf_${Date.now()}_${pdfFile.name.replace(/\s+/g, '_')}`;
-            const { data, error } = await supabase.storage
-                .from('uploads')
-                .upload(`notifications/${fileName}`, pdfFile);
-            
-            if (error) throw error;
-            
-            // Get public URL
-            const { data: { publicUrl } } = supabase.storage
-                .from('uploads')
-                .getPublicUrl(`notifications/${fileName}`);
-            
-            pdfUrl = publicUrl;
-        }
-        
-        // Insert notification
         const { error } = await supabase
             .from('notifications')
-            .insert([{
-                title: title,
-                message: message,
-                image_url: imageUrl,
-                pdf_url: pdfUrl,
-                is_active: true,
-                show_until_dismissed: isPersistent,
-                priority: isImportant ? 2 : 1,
-                created_at: new Date().toISOString(),
-                created_by: currentUser?.email || 'admin'
-            }]);
+            .insert([notificationData]);
         
         if (error) throw error;
         
@@ -646,8 +554,6 @@ async function sendNotification() {
         document.getElementById('notificationMessage').value = '';
         document.getElementById('notificationImportant').checked = false;
         document.getElementById('notificationPersistent').checked = false;
-        document.getElementById('notificationImage').value = '';
-        document.getElementById('notificationPdf').value = '';
         
         // Refresh data
         await loadNotifications();
@@ -663,6 +569,8 @@ async function sendNotification() {
 }
 
 async function deleteNotification(id) {
+    console.log('Deleting notification with ID:', id);
+    
     if (!await showConfirmation('Are you sure you want to delete this notification?')) {
         return;
     }
@@ -670,26 +578,38 @@ async function deleteNotification(id) {
     showLoading(true);
     
     try {
+        // First get notification info
+        const { data: notif, error: fetchError } = await supabase
+            .from('notifications')
+            .select('title')
+            .eq('id', id)
+            .single();
+        
+        if (fetchError) throw fetchError;
+        
+        // Delete the notification
         const { error } = await supabase
             .from('notifications')
-            .update({ is_active: false })
+            .delete()
             .eq('id', id);
         
         if (error) throw error;
         
-        showToast('Notification deleted successfully', 'success');
+        showToast(`"${notif.title}" deleted successfully!`, 'success');
         await loadNotifications();
         await loadDashboardStats();
         
     } catch (error) {
         console.error('Error deleting notification:', error);
-        showToast('Failed to delete notification', 'error');
+        showToast('Failed to delete notification: ' + error.message, 'error');
     } finally {
         showLoading(false);
     }
 }
 
 async function deleteChatMessage(id) {
+    console.log('Deleting chat message with ID:', id);
+    
     if (!await showConfirmation('Are you sure you want to delete this chat message?')) {
         return;
     }
@@ -716,7 +636,6 @@ async function deleteChatMessage(id) {
     }
 }
 
-// User Management Functions for Chat
 async function banUser(userName) {
     if (!await showConfirmation(`Are you sure you want to ban user "${userName}"?`)) {
         return;
@@ -725,7 +644,7 @@ async function banUser(userName) {
     showLoading(true);
     
     try {
-        // First get user's IP from comments
+        // First get user's messages to extract IP
         const { data: userComments, error: fetchError } = await supabase
             .from('comments')
             .select('ip_address')
@@ -743,25 +662,19 @@ async function banUser(userName) {
                 .insert([{
                     user_name: userName,
                     ip_address: ipAddress,
-                    banned_at: new Date().toISOString(),
-                    reason: 'Inappropriate behavior in chat',
                     banned_by: currentUser?.email || 'admin'
                 }]);
             
             if (error) throw error;
             
             // Delete all user's messages
-            const { error: deleteError } = await supabase
+            await supabase
                 .from('comments')
                 .delete()
                 .eq('user_name', userName);
             
-            if (deleteError) throw deleteError;
-            
             showToast(`User "${userName}" has been banned successfully`, 'success');
             await loadChatData();
-        } else {
-            showToast('User not found in chat records', 'error');
         }
         
     } catch (error) {
@@ -773,38 +686,33 @@ async function banUser(userName) {
 }
 
 // ==========================================
-// SITE EFFECTS & THEMES
+// EFFECTS SYSTEM
 // ==========================================
 async function toggleEffect(effect, enabled) {
+    showLoading(true);
+    
     try {
-        // Save setting to database
         const { error } = await supabase
             .from('site_settings')
             .upsert({
                 setting_key: `${effect}_effect`,
                 setting_value: enabled ? 'true' : 'false',
-                is_enabled: enabled,
-                updated_at: new Date().toISOString()
+                is_enabled: enabled
+            }, {
+                onConflict: 'setting_key'
             });
         
         if (error) throw error;
         
         const effectName = effect === 'snow' ? 'Snow effect' : 'Confetti effect';
-        showToast(`${effectName} ${enabled ? 'enabled' : 'disabled'}`, 'success');
+        showToast(`${effectName} ${enabled ? 'enabled' : 'disabled'}!`, 'success');
         
     } catch (error) {
         console.error('Error toggling effect:', error);
         showToast('Failed to update effect setting', 'error');
+    } finally {
+        showLoading(false);
     }
-}
-
-function toggleTheme(theme, enabled) {
-    // This would be implemented based on your theme system
-    showToast('Theme settings saved. Refresh page to see changes.', 'success');
-}
-
-function selectTheme(theme) {
-    showToast(`Selected ${theme} theme. Changes will apply on next refresh.`, 'info');
 }
 
 // ==========================================
@@ -821,11 +729,9 @@ function showToast(message, type = 'info') {
     const toast = document.getElementById('toast');
     if (!toast) return;
     
-    // Set message and type
     toast.textContent = message;
     toast.className = 'toast';
     
-    // Add type-specific styling
     if (type === 'success') {
         toast.style.borderLeftColor = '#4cc9f0';
     } else if (type === 'error') {
@@ -836,18 +742,15 @@ function showToast(message, type = 'info') {
         toast.style.borderLeftColor = '#4361ee';
     }
     
-    // Show toast
     toast.classList.add('show');
     
-    // Auto-hide after 5 seconds
     setTimeout(() => {
         toast.classList.remove('show');
     }, 5000);
 }
 
 function formatTimeAgo(date) {
-    const now = new Date();
-    const seconds = Math.floor((now - date) / 1000);
+    const seconds = Math.floor((new Date() - date) / 1000);
     
     if (seconds < 60) return 'Just now';
     if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
@@ -862,16 +765,11 @@ function refreshChat() {
     setTimeout(() => {
         loadChatData();
         showLoading(false);
-        showToast('Chat data refreshed', 'success');
+        showToast('Chat refreshed', 'success');
     }, 1000);
 }
 
-function backupDatabase() {
-    showToast('Database backup initiated. You will receive an email when complete.', 'info');
-    // In a real application, this would trigger a server-side backup process
-}
-
-// Confirmation Modal
+// Confirmation Dialog
 function showConfirmation(message) {
     return new Promise((resolve) => {
         const modal = document.createElement('div');
@@ -899,7 +797,7 @@ function showConfirmation(message) {
                 border: 2px solid #4361ee;
                 text-align: center;
             ">
-                <div style="font-size: 3rem; color: #f8961e; margin-bottom: 20px;">
+                <div style="font-size: 2.5rem; color: #f8961e; margin-bottom: 20px;">
                     ⚠️
                 </div>
                 <h3 style="color: #f8fafc; margin-bottom: 15px; font-size: 1.2rem;">
@@ -910,9 +808,9 @@ function showConfirmation(message) {
                 </p>
                 <div style="display: flex; gap: 15px; justify-content: center;">
                     <button id="confirmCancel" style="
-                        padding: 12px 25px;
-                        background: #0f172a;
-                        border: 1px solid #334155;
+                        padding: 12px 30px;
+                        background: #334155;
+                        border: 1px solid #475569;
                         color: #f8fafc;
                         border-radius: 8px;
                         cursor: pointer;
@@ -922,8 +820,8 @@ function showConfirmation(message) {
                         Cancel
                     </button>
                     <button id="confirmOk" style="
-                        padding: 12px 25px;
-                        background: linear-gradient(135deg, #4361ee, #7209b7);
+                        padding: 12px 30px;
+                        background: linear-gradient(135deg, #f72585, #e11575);
                         border: none;
                         color: white;
                         border-radius: 8px;
@@ -968,19 +866,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('loginSection').style.display = 'none';
         document.getElementById('dashboardSection').style.display = 'block';
         
-        // Update user info
         document.getElementById('adminName').textContent = currentUser.email.split('@')[0];
         document.getElementById('adminEmailDisplay').textContent = currentUser.email;
         
-        // Load data
         await loadAllData();
     } else {
-        // Show login screen
         document.getElementById('loginSection').style.display = 'block';
         document.getElementById('dashboardSection').style.display = 'none';
     }
     
-    // Hide loading overlay
     setTimeout(() => {
         showLoading(false);
     }, 1000);
@@ -998,37 +892,25 @@ window.sendNotification = sendNotification;
 window.deleteNotification = deleteNotification;
 window.deleteChatMessage = deleteChatMessage;
 window.toggleEffect = toggleEffect;
-window.toggleTheme = toggleTheme;
-window.selectTheme = selectTheme;
 window.refreshChat = refreshChat;
-window.backupDatabase = backupDatabase;
 window.banUser = banUser;
 window.showSection = function(section) {
-    // Hide all sections
     document.querySelectorAll('.content-section').forEach(el => {
         el.classList.remove('active');
     });
     
-    // Remove active from all menu items
     document.querySelectorAll('.sidebar-menu li').forEach(el => {
         el.classList.remove('active');
     });
     
-    // Show selected section
     document.getElementById(`section-${section}`).classList.add('active');
     
-    // Set active menu item
     const menuItem = document.querySelector(`.sidebar-menu li[onclick*="${section}"]`);
     if (menuItem) {
         menuItem.classList.add('active');
     }
 };
 
-// View functions
 window.viewNotification = function(id) {
-    showToast('View notification feature coming soon', 'info');
-};
-
-window.viewChatMessage = function(id) {
-    showToast('View chat message feature coming soon', 'info');
+    showToast('View feature coming soon', 'info');
 };
