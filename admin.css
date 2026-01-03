@@ -1397,3 +1397,26 @@ input:disabled + .slider {
         grid-template-columns: 1fr;
     }
 }
+/* Confirmation Modal */
+.confirmation-modal {
+    animation: fadeIn 0.3s ease;
+}
+
+.confirmation-modal .modal-content {
+    animation: slideUp 0.3s ease;
+}
+
+/* Generic Modal */
+.generic-modal-overlay {
+    animation: fadeIn 0.3s ease;
+}
+
+.generic-modal-overlay > div {
+    animation: slideUp 0.3s ease;
+}
+
+/* Notification Detail */
+.notification-detail-modal img {
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
