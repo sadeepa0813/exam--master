@@ -1,12 +1,13 @@
 // ==========================================
-// EXAM MASTER ADMIN - COMPLETE ADMIN PANEL
+// EXAM MASTER ADMIN - COMPLETE ADMIN PANEL (FIXED)
 // ==========================================
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
 // Supabase Configuration
 const SUPABASE_URL = 'https://nstnkxtxlqelwnefkmaj.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zdG5reHR4bHFlbHduZWZrbWFqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2Njg0NTc0OCwiZXhwIjoyMDgyNDIxNzQ4fQ.7nxY8FIR05sbZ33e4-hpZx6n8l-WA-gnlk2pOwxo2z4';
+// ⚠️ IMPORTANT: Replace this with your ANON key, NOT service_role key!
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zdG5reHR4bHFlbHduZWZrbWFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY3NTgzNDgsImV4cCI6MjA1MjMzNDM0OH0.YOUR_ANON_KEY_HERE';
 
 // Initialize Supabase Client
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -18,9 +19,31 @@ let allExams = [];
 let allNotifications = [];
 let allChatMessages = [];
 
+// Rate limiting
+const rateLimiter = {
+    requests: {},
+    check: function(key, limit = 10, window = 60000) {
+        const now = Date.now();
+        if (!this.requests[key]) {
+            this.requests[key] = [];
+        }
+        
+        // Remove old requests
+        this.requests[key] = this.requests[key].filter(time => now - time < window);
+        
+        if (this.requests[key].length >= limit) {
+            return false;
+        }
+        
+        this.requests[key].push(now);
+        return true;
+    }
+};
+
 // ==========================================
 // INITIALIZATION
 // ==========================================
+
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Admin Panel Initializing...');
     
@@ -31,6 +54,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (sessionError) {
             console.error('Session error:', sessionError);
             showToast('Session error. Please login again.', 'error');
+            showLoginScreen();
             return;
         }
         
@@ -38,11 +62,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentUser = session.user;
             console.log('User logged in:', currentUser.email);
             
-            // Update UI
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('dashboardSection').style.display = 'block';
+            // Verify admin role
+            const isAdmin = await verifyAdminRole(currentUser);
+            if (!isAdmin) {
+                showToast('Access denied. Admin privileges required.', 'error');
+                await logout();
+                return;
+            }
             
-            // Update user info
+            // Update UI
+            showDashboardScreen();
             updateUserInfo();
             
             // Load all data
@@ -52,23 +81,63 @@ document.addEventListener('DOMContentLoaded', async () => {
             await checkDatabaseConnection();
             
             showToast('Welcome back, ' + currentUser.email, 'success');
-            
         } else {
             console.log('No session found, showing login form');
-            document.getElementById('loginSection').style.display = 'block';
-            document.getElementById('dashboardSection').style.display = 'none';
+            showLoginScreen();
         }
-        
     } catch (error) {
         console.error('Initialization error:', error);
         showToast('System initialization failed', 'error');
+        showLoginScreen();
     } finally {
-        // Hide loading overlay after 1 second
+        // Hide loading overlay
         setTimeout(() => {
-            document.getElementById('loadingOverlay').style.display = 'none';
+            const loader = document.getElementById('loadingOverlay');
+            if (loader) loader.style.display = 'none';
         }, 1000);
     }
 });
+
+// Verify admin role
+async function verifyAdminRole(user) {
+    try {
+        // Check if user has admin role in database
+        const { data, error } = await supabase
+            .from('admin_users')
+            .select('role')
+            .eq('email', user.email)
+            .eq('is_active', true)
+            .single();
+        
+        if (error && error.code !== 'PGRST116') {
+            console.error('Admin verification error:', error);
+            return false;
+        }
+        
+        return data && data.role === 'admin';
+    } catch (error) {
+        console.error('Error verifying admin:', error);
+        return false;
+    }
+}
+
+// Show login screen
+function showLoginScreen() {
+    const loginSection = document.getElementById('loginSection');
+    const dashboardSection = document.getElementById('dashboardSection');
+    
+    if (loginSection) loginSection.style.display = 'block';
+    if (dashboardSection) dashboardSection.style.display = 'none';
+}
+
+// Show dashboard screen
+function showDashboardScreen() {
+    const loginSection = document.getElementById('loginSection');
+    const dashboardSection = document.getElementById('dashboardSection');
+    
+    if (loginSection) loginSection.style.display = 'none';
+    if (dashboardSection) dashboardSection.style.display = 'block';
+}
 
 // Update user information
 function updateUserInfo() {
@@ -79,7 +148,6 @@ function updateUserInfo() {
         if (adminName) {
             adminName.textContent = currentUser.email.split('@')[0] || 'Administrator';
         }
-        
         if (adminEmail) {
             adminEmail.textContent = currentUser.email;
         }
@@ -89,9 +157,9 @@ function updateUserInfo() {
 // Check database connection
 async function checkDatabaseConnection() {
     try {
-        const { data, error } = await supabase
+        const { error } = await supabase
             .from('exams')
-            .select('count')
+            .select('id')
             .limit(1);
         
         if (error) {
@@ -105,7 +173,6 @@ async function checkDatabaseConnection() {
         isDatabaseConnected = true;
         updateDatabaseStatus(true);
         return true;
-        
     } catch (error) {
         console.error('Database check error:', error);
         isDatabaseConnected = false;
@@ -131,12 +198,27 @@ function updateDatabaseStatus(connected) {
 // ==========================================
 // AUTHENTICATION
 // ==========================================
+
 async function adminLogin() {
     const email = document.getElementById('adminEmail')?.value.trim();
     const password = document.getElementById('adminPassword')?.value.trim();
     
+    // Input validation
     if (!email || !password) {
         showToast('Please enter email and password', 'error');
+        return;
+    }
+    
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        showToast('Please enter a valid email address', 'error');
+        return;
+    }
+    
+    // Rate limiting
+    if (!rateLimiter.check('login', 5, 300000)) {
+        showToast('Too many login attempts. Please try again later.', 'error');
         return;
     }
     
@@ -170,10 +252,16 @@ async function adminLogin() {
         currentUser = data.user;
         console.log('Login successful:', currentUser.email);
         
-        // Update UI
-        document.getElementById('loginSection').style.display = 'none';
-        document.getElementById('dashboardSection').style.display = 'block';
+        // Verify admin role
+        const isAdmin = await verifyAdminRole(currentUser);
+        if (!isAdmin) {
+            showToast('Access denied. Admin privileges required.', 'error');
+            await supabase.auth.signOut();
+            return;
+        }
         
+        // Update UI
+        showDashboardScreen();
         updateUserInfo();
         
         // Load data
@@ -209,8 +297,7 @@ async function logout() {
         currentUser = null;
         
         // Reset UI
-        document.getElementById('dashboardSection').style.display = 'none';
-        document.getElementById('loginSection').style.display = 'block';
+        showLoginScreen();
         
         // Clear all data
         allExams = [];
@@ -218,8 +305,10 @@ async function logout() {
         allChatMessages = [];
         
         // Reset forms
-        document.getElementById('adminEmail').value = '';
-        document.getElementById('adminPassword').value = '';
+        const emailField = document.getElementById('adminEmail');
+        const passwordField = document.getElementById('adminPassword');
+        if (emailField) emailField.value = '';
+        if (passwordField) passwordField.value = '';
         
         showToast('Logged out successfully', 'success');
         
@@ -232,11 +321,11 @@ async function logout() {
 // ==========================================
 // DATA LOADING
 // ==========================================
+
 async function loadAllData() {
     showLoading(true);
     
     try {
-        // Load data sequentially to avoid race conditions
         await loadDashboardStats();
         await loadExams();
         await loadNotifications();
@@ -245,7 +334,6 @@ async function loadAllData() {
         await loadEffectsStatus();
         
         console.log('All data loaded successfully');
-        
     } catch (error) {
         console.error('Error loading data:', error);
         showToast('Failed to load some data', 'warning');
@@ -256,46 +344,48 @@ async function loadAllData() {
 
 async function loadDashboardStats() {
     try {
-        // Get counts from Supabase with error handling
         const [examsResult, notificationsResult, commentsResult] = await Promise.allSettled([
             supabase.from('exams').select('*', { count: 'exact', head: true }),
             supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('is_active', true),
             supabase.from('comments').select('*', { count: 'exact', head: true })
         ]);
         
-        // Update UI with results or defaults
-        document.getElementById('statExams').textContent = 
-            examsResult.status === 'fulfilled' && examsResult.value.count ? examsResult.value.count : 0;
+        // Update UI with results
+        const statExams = document.getElementById('statExams');
+        const statNotifications = document.getElementById('statNotifications');
+        const statComments = document.getElementById('statComments');
         
-        document.getElementById('statNotifications').textContent = 
-            notificationsResult.status === 'fulfilled' && notificationsResult.value.count ? notificationsResult.value.count : 0;
-        
-        document.getElementById('statComments').textContent = 
-            commentsResult.status === 'fulfilled' && commentsResult.value.count ? commentsResult.value.count : 0;
+        if (statExams) {
+            statExams.textContent = examsResult.status === 'fulfilled' && examsResult.value.count ? examsResult.value.count : 0;
+        }
+        if (statNotifications) {
+            statNotifications.textContent = notificationsResult.status === 'fulfilled' && notificationsResult.value.count ? notificationsResult.value.count : 0;
+        }
+        if (statComments) {
+            statComments.textContent = commentsResult.status === 'fulfilled' && commentsResult.value.count ? commentsResult.value.count : 0;
+        }
         
         // Get active users from last 24 hours
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         
-        const { data: activeUsers, error: usersError } = await supabase
+        const { data: activeUsers } = await supabase
             .from('comments')
             .select('user_name')
             .gte('created_at', yesterday.toISOString());
         
-        if (!usersError && activeUsers) {
-            const uniqueUsers = [...new Set(activeUsers.map(msg => msg.user_name))].length;
-            document.getElementById('statUsers').textContent = uniqueUsers;
-        } else {
-            document.getElementById('statUsers').textContent = '0';
+        const statUsers = document.getElementById('statUsers');
+        if (statUsers) {
+            if (activeUsers && activeUsers.length > 0) {
+                const uniqueUsers = [...new Set(activeUsers.map(msg => msg.user_name))].length;
+                statUsers.textContent = uniqueUsers;
+            } else {
+                statUsers.textContent = '0';
+            }
         }
         
     } catch (error) {
         console.error('Error loading dashboard stats:', error);
-        // Set default values on error
-        document.getElementById('statExams').textContent = '0';
-        document.getElementById('statNotifications').textContent = '0';
-        document.getElementById('statComments').textContent = '0';
-        document.getElementById('statUsers').textContent = '0';
     }
 }
 
@@ -309,8 +399,8 @@ async function loadExams() {
         if (error) throw error;
         
         allExams = data || [];
-        
         const tableBody = document.getElementById('examsTable');
+        
         if (!tableBody) return;
         
         tableBody.innerHTML = '';
@@ -323,27 +413,15 @@ async function loadExams() {
                 
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${exam.batch_name}</td>
-                    <td>${examDate.toLocaleDateString('en-US', { 
-                        year: 'numeric', 
-                        month: 'short', 
-                        day: 'numeric' 
-                    })}</td>
+                    <td>${sanitizeHTML(exam.batch_name)}</td>
+                    <td>${examDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+                    <td>${daysLeft > 0 ? `${daysLeft} days` : 'Past'}</td>
+                    <td><span class="status-badge ${exam.status === 'enabled' ? 'status-active' : 'status-inactive'}">${exam.status === 'enabled' ? 'Active' : 'Inactive'}</span></td>
                     <td>
-                        <span class="${daysLeft > 0 ? 'text-success' : 'text-danger'}">
-                            ${daysLeft > 0 ? `${daysLeft} days` : 'Past'}
-                        </span>
-                    </td>
-                    <td>
-                        <span class="status-badge ${exam.status === 'enabled' ? 'status-active' : 'status-inactive'}">
-                            ${exam.status === 'enabled' ? 'Active' : 'Inactive'}
-                        </span>
-                    </td>
-                    <td class="actions">
-                        <button class="btn-icon" onclick="toggleExamStatus('${exam.id}', '${exam.status}')">
-                            <i class="fas fa-${exam.status === 'enabled' ? 'eye-slash' : 'eye'}"></i>
+                        <button class="btn-icon" onclick="toggleExamStatus(${exam.id}, '${exam.status}')" title="Toggle Status">
+                            <i class="fas fa-${exam.status === 'enabled' ? 'pause' : 'play'}"></i>
                         </button>
-                        <button class="btn-icon btn-danger" onclick="deleteExam('${exam.id}')">
+                        <button class="btn-icon btn-delete" onclick="deleteExam(${exam.id})" title="Delete">
                             <i class="fas fa-trash"></i>
                         </button>
                     </td>
@@ -353,7 +431,8 @@ async function loadExams() {
         } else {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="5" class="text-center">
+                    <td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                        <i class="fas fa-inbox" style="font-size: 3rem; opacity: 0.3; display: block; margin-bottom: 1rem;"></i>
                         No exams found. Add your first exam above.
                     </td>
                 </tr>
@@ -377,8 +456,8 @@ async function loadNotifications() {
         if (error) throw error;
         
         allNotifications = data || [];
-        
         const container = document.getElementById('notificationsList');
+        
         if (!container) return;
         
         container.innerHTML = '';
@@ -387,7 +466,7 @@ async function loadNotifications() {
             const table = document.createElement('div');
             table.className = 'table-responsive';
             table.innerHTML = `
-                <table class="data-table">
+                <table>
                     <thead>
                         <tr>
                             <th>Title</th>
@@ -404,18 +483,14 @@ async function loadNotifications() {
                             
                             return `
                                 <tr>
-                                    <td>${notif.title}</td>
+                                    <td>${sanitizeHTML(notif.title)}</td>
                                     <td>${date.toLocaleDateString('en-US')}</td>
+                                    <td><span class="status-badge ${priorityClass}">${priorityText}</span></td>
                                     <td>
-                                        <span class="status-badge ${priorityClass}">
-                                            ${priorityText}
-                                        </span>
-                                    </td>
-                                    <td class="actions">
-                                        <button class="btn-icon" onclick="viewNotification('${notif.id}')">
+                                        <button class="btn-icon" onclick="viewNotification(${notif.id})" title="View">
                                             <i class="fas fa-eye"></i>
                                         </button>
-                                        <button class="btn-icon btn-danger" onclick="deleteNotification('${notif.id}')">
+                                        <button class="btn-icon btn-delete" onclick="deleteNotification(${notif.id})" title="Delete">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </td>
@@ -428,10 +503,10 @@ async function loadNotifications() {
             container.appendChild(table);
         } else {
             container.innerHTML = `
-                <div class="empty-state">
-                    <i class="far fa-bell-slash"></i>
-                    <p>No active notifications</p>
-                    <small>Create your first notification using the form above</small>
+                <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                    <i class="fas fa-bell-slash" style="font-size: 3rem; opacity: 0.3; display: block; margin-bottom: 1rem;"></i>
+                    <p style="margin: 0;">No active notifications</p>
+                    <p style="font-size: 0.9rem; opacity: 0.7;">Create your first notification using the form above</p>
                 </div>
             `;
         }
@@ -453,8 +528,8 @@ async function loadChatData() {
         if (error) throw error;
         
         allChatMessages = data || [];
-        
         const tableBody = document.getElementById('chatTable');
+        
         if (!tableBody) return;
         
         tableBody.innerHTML = '';
@@ -465,36 +540,35 @@ async function loadChatData() {
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span>${comment.user_name}</span>
-                            <button class="btn-icon btn-danger" onclick="banUser('${comment.user_name}')" 
-                                    style="padding: 4px 8px; font-size: 0.8rem;">
-                                <i class="fas fa-ban"></i>
-                            </button>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-user-circle" style="color: var(--primary); font-size: 1.2rem;"></i>
+                            <strong>${sanitizeHTML(comment.user_name)}</strong>
                         </div>
                     </td>
-                    <td>${comment.message.length > 100 ? comment.message.substring(0, 100) + '...' : comment.message}</td>
-                    <td>${comment.ip_address || 'N/A'}</td>
+                    <td>${sanitizeHTML(comment.message.length > 100 ? comment.message.substring(0, 100) + '...' : comment.message)}</td>
+                    <td>${sanitizeHTML(comment.ip_address || 'N/A')}</td>
                     <td>${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</td>
-                    <td class="actions">
-                        <button class="btn-icon" onclick="viewChatMessage('${comment.id}')">
+                    <td>
+                        <button class="btn-icon" onclick="viewChatMessage(${comment.id})" title="View">
                             <i class="fas fa-eye"></i>
                         </button>
-                        <button class="btn-icon btn-danger" onclick="deleteChatMessage('${comment.id}')">
+                        <button class="btn-icon btn-delete" onclick="deleteChatMessage(${comment.id})" title="Delete">
                             <i class="fas fa-trash"></i>
+                        </button>
+                        <button class="btn-icon" style="color: #f72585;" onclick="banUser('${sanitizeHTML(comment.user_name)}')" title="Ban User">
+                            <i class="fas fa-ban"></i>
                         </button>
                     </td>
                 `;
                 tableBody.appendChild(row);
             });
             
-            // Update stats
             updateChatStats();
-            
         } else {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="5" class="text-center">
+                    <td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                        <i class="fas fa-comments" style="font-size: 3rem; opacity: 0.3; display: block; margin-bottom: 1rem;"></i>
                         No chat messages yet
                     </td>
                 </tr>
@@ -508,19 +582,27 @@ async function loadChatData() {
 }
 
 function updateChatStats() {
-    // Total messages
-    document.getElementById('totalMessages').textContent = allChatMessages.length;
+    const totalMessages = document.getElementById('totalMessages');
+    const todayMessages = document.getElementById('todayMessages');
+    const activeUsers = document.getElementById('activeUsers');
     
-    // Today's messages
+    if (totalMessages) {
+        totalMessages.textContent = allChatMessages.length;
+    }
+    
     const today = new Date().toDateString();
-    const todayMessages = allChatMessages.filter(msg => 
+    const todayCount = allChatMessages.filter(msg => 
         new Date(msg.created_at).toDateString() === today
     ).length;
-    document.getElementById('todayMessages').textContent = todayMessages;
     
-    // Unique users
+    if (todayMessages) {
+        todayMessages.textContent = todayCount;
+    }
+    
     const uniqueUsers = [...new Set(allChatMessages.map(msg => msg.user_name))].length;
-    document.getElementById('activeUsers').textContent = uniqueUsers;
+    if (activeUsers) {
+        activeUsers.textContent = uniqueUsers;
+    }
 }
 
 async function loadRecentActivity() {
@@ -528,7 +610,6 @@ async function loadRecentActivity() {
         const activityList = document.getElementById('activityList');
         if (!activityList) return;
         
-        // Get recent activities from various sources
         const recentActivities = [];
         
         // Get recent exams
@@ -537,7 +618,7 @@ async function loadRecentActivity() {
                 recentActivities.push({
                     type: 'exam',
                     title: `New exam added: ${exam.batch_name}`,
-                    time: new Date(exam.created_at || exam.updated_at || exam.exam_date),
+                    time: new Date(exam.created_at || exam.exam_date),
                     icon: 'fas fa-calendar-plus'
                 });
             });
@@ -567,18 +648,16 @@ async function loadRecentActivity() {
             });
         }
         
-        // Sort by time (newest first)
+        // Sort by time
         recentActivities.sort((a, b) => b.time - a.time);
         
-        // Display only top 5
+        // Display top 5
         activityList.innerHTML = recentActivities.slice(0, 5).map(activity => `
             <div class="activity-item">
-                <div class="activity-icon">
-                    <i class="${activity.icon}"></i>
-                </div>
-                <div class="activity-content">
-                    <p class="activity-title">${activity.title}</p>
-                    <span class="activity-time">${formatTimeAgo(activity.time)}</span>
+                <i class="${activity.icon}" style="color: var(--primary);"></i>
+                <div>
+                    <strong>${sanitizeHTML(activity.title)}</strong>
+                    <small>${formatTimeAgo(activity.time)}</small>
                 </div>
             </div>
         `).join('');
@@ -595,23 +674,18 @@ async function loadEffectsStatus() {
             .select('*')
             .in('setting_key', ['snow_effect', 'confetti_effect', 'dark_theme']);
         
-        if (error) {
-            console.log('No effects settings found, using defaults...');
-            // Set default values
-            document.getElementById('snow_effect').checked = false;
-            document.getElementById('confetti_effect').checked = false;
-            document.getElementById('dark_theme').checked = true;
-            return;
-        }
+        // Set defaults first
+        const snowCheckbox = document.getElementById('snow_effect');
+        const confettiCheckbox = document.getElementById('confetti_effect');
+        const themeCheckbox = document.getElementById('dark_theme');
         
-        // Reset all to false first
-        document.getElementById('snow_effect').checked = false;
-        document.getElementById('confetti_effect').checked = false;
-        document.getElementById('dark_theme').checked = true;
+        if (snowCheckbox) snowCheckbox.checked = false;
+        if (confettiCheckbox) confettiCheckbox.checked = false;
+        if (themeCheckbox) themeCheckbox.checked = true;
         
-        if (data && data.length > 0) {
+        if (!error && data && data.length > 0) {
             data.forEach(setting => {
-                const checkbox = document.getElementById(`${setting.setting_key}`);
+                const checkbox = document.getElementById(setting.setting_key);
                 if (checkbox) {
                     checkbox.checked = setting.is_enabled;
                 }
@@ -620,94 +694,77 @@ async function loadEffectsStatus() {
         
     } catch (error) {
         console.error('Error loading effects status:', error);
-        // Set defaults on error
-        document.getElementById('snow_effect').checked = false;
-        document.getElementById('confetti_effect').checked = false;
-        document.getElementById('dark_theme').checked = true;
     }
 }
 
 // ==========================================
 // CRUD OPERATIONS - EXAMS
 // ==========================================
+
 async function addNewExam() {
     const name = document.getElementById('examName')?.value.trim();
     const dateTime = document.getElementById('examDateTime')?.value;
     const description = document.getElementById('examDescription')?.value.trim();
     
+    // Validation
     if (!name || !dateTime) {
         showToast('Please fill in all required fields', 'error');
+        return;
+    }
+    
+    if (name.length < 3) {
+        showToast('Exam name must be at least 3 characters', 'error');
+        return;
+    }
+    
+    if (name.length > 100) {
+        showToast('Exam name is too long (max 100 characters)', 'error');
+        return;
+    }
+    
+    // Check date validity
+    const examDate = new Date(dateTime);
+    if (isNaN(examDate.getTime())) {
+        showToast('Invalid date/time', 'error');
+        return;
+    }
+    
+    // Rate limiting
+    if (!rateLimiter.check('addExam', 10, 60000)) {
+        showToast('Too many requests. Please wait a moment.', 'error');
         return;
     }
     
     showLoading(true);
     
     try {
-        // Check if exam already exists
-        const { data: existingExams, error: checkError } = await supabase
+        // Check if exam exists
+        const { data: existingExams } = await supabase
             .from('exams')
             .select('batch_name')
             .eq('batch_name', name)
             .limit(1);
-        
-        if (checkError) {
-            console.error('Check exam error:', checkError);
-        }
         
         if (existingExams && existingExams.length > 0) {
             showToast('An exam with this name already exists', 'error');
             return;
         }
         
-        // Prepare exam data - ONLY include columns that exist in your table
+        // Prepare exam data
         const examData = {
             batch_name: name,
             exam_date: dateTime,
             description: description || '',
             status: 'enabled'
-            // Remove created_by, created_at, updated_at if they don't exist
         };
         
-        console.log('Adding exam with data:', examData);
-        
-        const { data, error } = await supabase
+        const { error } = await supabase
             .from('exams')
-            .insert([examData])
-            .select();
+            .insert([examData]);
         
-        if (error) {
-            console.error('Add exam error:', error);
-            
-            // Show specific error messages
-            if (error.code === '23505') {
-                showToast('Exam with this name already exists', 'error');
-            } else if (error.code === '23514') {
-                showToast('Invalid exam data. Please check your inputs.', 'error');
-            } else if (error.message.includes('column')) {
-                // Remove problematic columns and try again
-                const simplifiedExamData = {
-                    batch_name: name,
-                    exam_date: dateTime,
-                    description: description || '',
-                    status: 'enabled'
-                };
-                
-                const { error: retryError } = await supabase
-                    .from('exams')
-                    .insert([simplifiedExamData]);
-                
-                if (retryError) {
-                    throw retryError;
-                }
-                
-                showToast('Exam added successfully!', 'success');
-            } else {
-                showToast('Failed to add exam: ' + error.message, 'error');
-            }
-            return;
-        }
+        if (error) throw error;
         
-        showToast('Exam added successfully!', 'success');
+        showToast('Exam added successfully! 🎉', 'success');
         
         // Clear form
         document.getElementById('examName').value = '';
@@ -742,7 +799,6 @@ async function toggleExamStatus(id, currentStatus) {
     showLoading(true);
     
     try {
-        // Update only the status column
         const { error } = await supabase
             .from('exams')
             .update({ status: newStatus })
@@ -755,7 +811,7 @@ async function toggleExamStatus(id, currentStatus) {
         
     } catch (error) {
         console.error('Error toggling exam status:', error);
-        showToast('Failed to update exam status: ' + error.message, 'error');
+        showToast('Failed to update exam status', 'error');
     } finally {
         showLoading(false);
     }
@@ -773,16 +829,12 @@ async function deleteExam(id) {
     showLoading(true);
     
     try {
-        // Get exam info for message
-        const { data: exam, error: fetchError } = await supabase
+        const { data: exam } = await supabase
             .from('exams')
             .select('batch_name')
             .eq('id', id)
             .single();
         
-        if (fetchError) throw fetchError;
-        
-        // Delete the exam
         const { error } = await supabase
             .from('exams')
             .delete()
@@ -790,16 +842,15 @@ async function deleteExam(id) {
         
         if (error) throw error;
         
-        showToast(`"${exam.batch_name}" deleted successfully!`, 'success');
+        showToast(`"${exam?.batch_name || 'Exam'}" deleted successfully!`, 'success');
         
-        // Refresh data
         await loadExams();
         await loadDashboardStats();
         await loadRecentActivity();
         
     } catch (error) {
         console.error('Error deleting exam:', error);
-        showToast('Failed to delete exam: ' + error.message, 'error');
+        showToast('Failed to delete exam', 'error');
     } finally {
         showLoading(false);
     }
@@ -808,6 +859,7 @@ async function deleteExam(id) {
 // ==========================================
 // CRUD OPERATIONS - NOTIFICATIONS
 // ==========================================
+
 async function sendNotification() {
     const title = document.getElementById('notificationTitle')?.value.trim();
     const message = document.getElementById('notificationMessage')?.value.trim();
@@ -816,70 +868,70 @@ async function sendNotification() {
     const imageFile = document.getElementById('notificationImage')?.files[0];
     const pdfFile = document.getElementById('notificationPdf')?.files[0];
     
+    // Validation
     if (!title) {
         showToast('Please enter a notification title', 'error');
+        return;
+    }
+    
+    if (title.length < 3) {
+        showToast('Title must be at least 3 characters', 'error');
+        return;
+    }
+    
+    if (title.length > 200) {
+        showToast('Title is too long (max 200 characters)', 'error');
+        return;
+    }
+    
+    // Rate limiting
+    if (!rateLimiter.check('sendNotification', 5, 60000)) {
+        showToast('Too many requests. Please wait a moment.', 'error');
         return;
     }
     
     showLoading(true);
     
     try {
-        // Prepare notification data - ONLY include columns that exist
+        let imageUrl = null;
+        let pdfUrl = null;
+        
+        // Upload image if exists
+        if (imageFile) {
+            imageUrl = await uploadFile(imageFile, 'notification-images');
+        }
+        
+        // Upload PDF if exists
+        if (pdfFile) {
+            pdfUrl = await uploadFile(pdfFile, 'notification-pdfs');
+        }
+        
+        // Prepare notification data
         const notificationData = {
             title: title,
             message: message || '',
             is_active: true,
             show_until_dismissed: isPersistent,
-            priority: isImportant ? 3 : 1
-            // Remove created_by, updated_at if they don't exist
-            // Remove image_url and pdf_url if they don't exist
+            priority: isImportant ? 3 : 1,
+            image_url: imageUrl,
+            pdf_url: pdfUrl
         };
-        
-        console.log('Adding notification with data:', notificationData);
         
         const { error } = await supabase
             .from('notifications')
             .insert([notificationData]);
         
-        if (error) {
-            console.error('Send notification error:', error);
-            
-            // Try with minimal data if there's a column error
-            if (error.message.includes('column')) {
-                const minimalNotificationData = {
-                    title: title,
-                    message: message || '',
-                    is_active: true,
-                    priority: isImportant ? 3 : 1
-                };
-                
-                const { error: retryError } = await supabase
-                    .from('notifications')
-                    .insert([minimalNotificationData]);
-                
-                if (retryError) {
-                    throw retryError;
-                }
-                
-                showToast('Notification sent successfully!', 'success');
-            } else {
-                throw error;
-            }
-        } else {
-            showToast('Notification sent successfully!', 'success');
-        }
+        if (error) throw error;
+        
+        showToast('Notification sent successfully! 🔔', 'success');
         
         // Clear form
         document.getElementById('notificationTitle').value = '';
         document.getElementById('notificationMessage').value = '';
         document.getElementById('notificationImportant').checked = false;
         document.getElementById('notificationPersistent').checked = false;
-        if (document.getElementById('notificationImage')) {
-            document.getElementById('notificationImage').value = '';
-        }
-        if (document.getElementById('notificationPdf')) {
-            document.getElementById('notificationPdf').value = '';
-        }
+        removeImage();
+        removePDF();
         
         // Refresh data
         await loadNotifications();
@@ -906,16 +958,12 @@ async function deleteNotification(id) {
     showLoading(true);
     
     try {
-        // Get notification info
-        const { data: notif, error: fetchError } = await supabase
+        const { data: notif } = await supabase
             .from('notifications')
             .select('title')
             .eq('id', id)
             .single();
         
-        if (fetchError) throw fetchError;
-        
-        // Delete the notification
         const { error } = await supabase
             .from('notifications')
             .delete()
@@ -923,13 +971,14 @@ async function deleteNotification(id) {
         
         if (error) throw error;
         
-        showToast(`"${notif.title}" deleted successfully!`, 'success');
+        showToast(`"${notif?.title || 'Notification'}" deleted successfully!`, 'success');
+        
         await loadNotifications();
         await loadDashboardStats();
         
     } catch (error) {
         console.error('Error deleting notification:', error);
-        showToast('Failed to delete notification: ' + error.message, 'error');
+        showToast('Failed to delete notification', 'error');
     } finally {
         showLoading(false);
     }
@@ -938,6 +987,7 @@ async function deleteNotification(id) {
 // ==========================================
 // CHAT MANAGEMENT
 // ==========================================
+
 async function deleteChatMessage(id) {
     const confirmed = await showConfirmation(
         'Delete Message',
@@ -958,12 +1008,13 @@ async function deleteChatMessage(id) {
         if (error) throw error;
         
         showToast('Chat message deleted successfully', 'success');
+        
         await loadChatData();
         await loadDashboardStats();
         
     } catch (error) {
         console.error('Error deleting chat message:', error);
-        showToast('Failed to delete chat message: ' + error.message, 'error');
+        showToast('Failed to delete chat message', 'error');
     } finally {
         showLoading(false);
     }
@@ -981,49 +1032,41 @@ async function banUser(userName) {
     showLoading(true);
     
     try {
-        // Get user's IP from recent messages
-        const { data: userMessages, error: fetchError } = await supabase
+        // Get user's IP
+        const { data: userMessages } = await supabase
             .from('comments')
             .select('ip_address')
             .eq('user_name', userName)
             .limit(1);
         
-        if (fetchError && !fetchError.message.includes('No rows found')) {
-            throw fetchError;
-        }
-        
-        // Try to add to banned_users table (if it exists)
+        // Try to add to banned_users table
         try {
-            const { error: banError } = await supabase
+            await supabase
                 .from('banned_users')
                 .insert([{
                     user_name: userName,
-                    ip_address: userMessages && userMessages.length > 0 ? userMessages[0].ip_address : 'unknown',
+                    ip_address: userMessages?.[0]?.ip_address || 'unknown',
                     banned_by: currentUser?.email || 'admin',
                     reason: 'Inappropriate behavior in chat'
                 }]);
-            
-            if (banError && !banError.message.includes('relation')) {
-                console.error('Ban user error:', banError);
-            }
         } catch (tableError) {
             console.log('banned_users table might not exist:', tableError);
         }
         
         // Delete all user's messages
-        const { error: deleteError } = await supabase
+        const { error } = await supabase
             .from('comments')
             .delete()
             .eq('user_name', userName);
         
-        if (deleteError) throw deleteError;
+        if (error) throw error;
         
         showToast(`User "${userName}" has been banned successfully`, 'success');
         await loadChatData();
         
     } catch (error) {
         console.error('Error banning user:', error);
-        showToast('Failed to ban user: ' + error.message, 'error');
+        showToast('Failed to ban user', 'error');
     } finally {
         showLoading(false);
     }
@@ -1031,37 +1074,30 @@ async function banUser(userName) {
 
 function refreshChat() {
     showLoading(true);
-    setTimeout(() => {
-        loadChatData();
+    setTimeout(async () => {
+        await loadChatData();
         showLoading(false);
         showToast('Chat refreshed', 'success');
-    }, 1000);
+    }, 500);
 }
 
 // ==========================================
 // EFFECTS MANAGEMENT
 // ==========================================
+
 async function toggleEffect(effect, enabled) {
     console.log(`Toggling ${effect} effect: ${enabled}`);
-    
     showLoading(true);
     
     try {
-        // Check if setting exists
-        const { data: existing, error: fetchError } = await supabase
+        const { data: existing } = await supabase
             .from('site_settings')
             .select('*')
             .eq('setting_key', `${effect}_effect`)
             .maybeSingle();
         
         let result;
-        
-        if (fetchError && !fetchError.message.includes('No rows found')) {
-            throw fetchError;
-        }
-        
         if (existing) {
-            // Update existing setting
             result = await supabase
                 .from('site_settings')
                 .update({
@@ -1070,7 +1106,6 @@ async function toggleEffect(effect, enabled) {
                 })
                 .eq('setting_key', `${effect}_effect`);
         } else {
-            // Insert new setting
             result = await supabase
                 .from('site_settings')
                 .insert({
@@ -1081,38 +1116,28 @@ async function toggleEffect(effect, enabled) {
         }
         
         const { error } = result;
-        
-        if (error) {
-            console.error('Supabase error:', error);
-            throw error;
-        }
+        if (error) throw error;
         
         const effectName = effect === 'snow' ? 'Snow effect' : 'Confetti effect';
         showToast(`${effectName} ${enabled ? 'enabled' : 'disabled'} successfully!`, 'success');
         
-        // Show preview
         showEffectPreview(effect, enabled);
         
     } catch (error) {
         console.error('Error toggling effect:', error);
-        showToast('Failed to update effect: ' + error.message, 'error');
+        showToast('Failed to update effect', 'error');
         
         // Revert checkbox
         const checkbox = document.getElementById(`${effect}_effect`);
-        if (checkbox) {
-            checkbox.checked = !enabled;
-        }
+        if (checkbox) checkbox.checked = !enabled;
     } finally {
         showLoading(false);
     }
 }
 
 function showEffectPreview(effect, enabled) {
-    // Remove existing preview if any
     const existingPreview = document.getElementById('effectPreview');
-    if (existingPreview) {
-        existingPreview.remove();
-    }
+    if (existingPreview) existingPreview.remove();
     
     if (!enabled) return;
     
@@ -1133,40 +1158,28 @@ function showEffectPreview(effect, enabled) {
     
     container.innerHTML = `
         <div style="
-            background: rgba(30, 41, 59, 0.95);
-            border-radius: 20px;
-            padding: 30px;
-            text-align: center;
+            background: var(--bg-card);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
             border: 2px solid ${color};
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-            animation: fadeIn 0.3s ease;
-            backdrop-filter: blur(10px);
+            text-align: center;
+            animation: slideUp 0.3s ease;
         ">
-            <div style="font-size: 4rem; margin-bottom: 20px;">${emoji}</div>
-            <h3 style="color: white; margin-bottom: 10px; font-size: 1.5rem;">${effectName} Effect Enabled</h3>
-            <p style="color: #cbd5e1; margin-bottom: 20px;">Effect will appear on the main website</p>
-            <div style="
-                width: 100px;
-                height: 100px;
-                margin: 0 auto;
-                background: ${effect === 'snow' ? 
-                    'linear-gradient(135deg, #ffffff, #e0f7fa)' : 
-                    'linear-gradient(135deg, #ff6b6b, #ffd700, #4ecdc4)'};
-                border-radius: 50%;
-                animation: pulse 2s infinite;
-            "></div>
+            <div style="font-size: 3rem; margin-bottom: 0.5rem;">${emoji}</div>
+            <h3 style="margin: 0; color: ${color};">${effectName} Effect Enabled</h3>
+            <p style="margin: 0.5rem 0 0 0; color: var(--text-secondary); font-size: 0.9rem;">Effect will appear on the main website</p>
         </div>
     `;
     
     document.body.appendChild(container);
     
-    // Remove after 3 seconds
     setTimeout(() => {
         if (container.parentElement) {
             container.style.animation = 'fadeOut 0.3s ease';
             setTimeout(() => {
                 if (container.parentElement) {
-                    container.parentElement.removeChild(container);
+                    container.remove();
                 }
             }, 300);
         }
@@ -1200,8 +1213,42 @@ function backupDatabase() {
 }
 
 // ==========================================
+// FILE UPLOAD
+// ==========================================
+
+async function uploadFile(file, bucket = 'notifications') {
+    try {
+        // Generate unique filename
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        
+        // Upload to Supabase Storage
+        const { data, error } = await supabase.storage
+            .from(bucket)
+            .upload(fileName, file, {
+                cacheControl: '3600',
+                upsert: false
+            });
+        
+        if (error) throw error;
+        
+        // Get public URL
+        const { data: { publicUrl } } = supabase.storage
+            .from(bucket)
+            .getPublicUrl(fileName);
+        
+        return publicUrl;
+        
+    } catch (error) {
+        console.error('File upload error:', error);
+        throw new Error('Failed to upload file: ' + error.message);
+    }
+}
+
+// ==========================================
 // UTILITY FUNCTIONS
 // ==========================================
+
 function showLoading(show) {
     const loader = document.getElementById('loadingOverlay');
     if (loader) {
@@ -1218,18 +1265,14 @@ function showToast(message, type = 'info') {
     toast.textContent = message;
     toast.className = 'toast';
     
-    // Set color based on type
     let borderColor = '#4361ee';
     if (type === 'success') borderColor = '#4cc9f0';
     else if (type === 'error') borderColor = '#f72585';
     else if (type === 'warning') borderColor = '#f8961e';
     
     toast.style.borderLeftColor = borderColor;
-    
-    // Show toast
     toast.classList.add('show');
     
-    // Auto-hide after 5 seconds
     setTimeout(() => {
         toast.classList.remove('show');
     }, 5000);
@@ -1247,10 +1290,16 @@ function formatTimeAgo(date) {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+function sanitizeHTML(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
 // Confirmation Dialog
 async function showConfirmation(title, message, confirmText = 'Confirm') {
     return new Promise((resolve) => {
-        // Create modal HTML
         const modalHTML = `
             <div class="confirmation-modal" style="
                 position: fixed;
@@ -1258,61 +1307,57 @@ async function showConfirmation(title, message, confirmText = 'Confirm') {
                 left: 0;
                 width: 100%;
                 height: 100%;
-                background: rgba(0, 0, 0, 0.7);
-                z-index: 10000;
+                background: rgba(0, 0, 0, 0.8);
                 display: flex;
                 align-items: center;
                 justify-content: center;
+                z-index: 10000;
                 animation: fadeIn 0.3s ease;
             ">
                 <div style="
                     background: var(--bg-card);
-                    padding: 30px;
+                    padding: 2rem;
                     border-radius: 12px;
                     max-width: 400px;
                     width: 90%;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
                     animation: slideUp 0.3s ease;
                 ">
-                    <h3 style="margin-bottom: 15px; color: var(--text-primary);">
-                        ${title}
+                    <h3 style="margin: 0 0 1rem 0; color: var(--text-primary);">
+                        <i class="fas fa-exclamation-circle" style="color: var(--primary);"></i>
+                        ${sanitizeHTML(title)}
                     </h3>
-                    <p style="margin-bottom: 25px; color: var(--text-secondary);">
-                        ${message}
-                    </p>
-                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <p style="margin: 0 0 1.5rem 0; color: var(--text-secondary);">${sanitizeHTML(message)}</p>
+                    <div style="display: flex; gap: 1rem; justify-content: flex-end;">
                         <button id="confirmCancel" style="
-                            padding: 10px 20px;
-                            background: var(--bg-dark);
-                            color: var(--text-primary);
-                            border: 1px solid var(--border-color);
-                            border-radius: 8px;
-                            cursor: pointer;
-                            transition: all 0.3s ease;
-                        ">
-                            Cancel
-                        </button>
-                        <button id="confirmOk" style="
-                            padding: 10px 20px;
-                            background: linear-gradient(135deg, var(--primary), var(--secondary));
-                            color: white;
+                            padding: 0.75rem 1.5rem;
                             border: none;
                             border-radius: 8px;
+                            background: var(--bg-dark);
+                            color: var(--text-primary);
                             cursor: pointer;
+                            font-weight: 500;
                             transition: all 0.3s ease;
-                        ">
-                            ${confirmText}
-                        </button>
+                        ">Cancel</button>
+                        <button id="confirmOk" style="
+                            padding: 0.75rem 1.5rem;
+                            border: none;
+                            border-radius: 8px;
+                            background: var(--primary);
+                            color: white;
+                            cursor: pointer;
+                            font-weight: 500;
+                            transition: all 0.3s ease;
+                        ">${sanitizeHTML(confirmText)}</button>
                     </div>
                 </div>
             </div>
         `;
         
-        // Add to DOM
         const modalDiv = document.createElement('div');
         modalDiv.innerHTML = modalHTML;
         document.body.appendChild(modalDiv);
         
-        // Setup event listeners
         document.getElementById('confirmCancel').onclick = () => {
             modalDiv.remove();
             resolve(false);
@@ -1323,34 +1368,11 @@ async function showConfirmation(title, message, confirmText = 'Confirm') {
             resolve(true);
         };
         
-        // Close on background click
         modalDiv.querySelector('.confirmation-modal').onclick = (e) => {
             if (e.target.classList.contains('confirmation-modal')) {
                 modalDiv.remove();
                 resolve(false);
             }
-        };
-        
-        // Add hover effects
-        const cancelBtn = document.getElementById('confirmCancel');
-        const okBtn = document.getElementById('confirmOk');
-        
-        cancelBtn.onmouseover = () => {
-            cancelBtn.style.background = 'var(--bg-hover)';
-            cancelBtn.style.transform = 'translateY(-2px)';
-        };
-        cancelBtn.onmouseout = () => {
-            cancelBtn.style.background = 'var(--bg-dark)';
-            cancelBtn.style.transform = 'translateY(0)';
-        };
-        
-        okBtn.onmouseover = () => {
-            okBtn.style.transform = 'translateY(-2px)';
-            okBtn.style.boxShadow = '0 4px 12px rgba(67, 97, 238, 0.4)';
-        };
-        okBtn.onmouseout = () => {
-            okBtn.style.transform = 'translateY(0)';
-            okBtn.style.boxShadow = 'none';
         };
     });
 }
@@ -1364,110 +1386,93 @@ async function viewNotification(id) {
     }
     
     const date = new Date(notification.created_at);
+    
     const modalHTML = `
-        <div style="padding: 20px;">
-            <h3 style="color: var(--text-primary); margin-bottom: 10px;">
-                ${notification.title}
-            </h3>
-            <div style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">
-                ${date.toLocaleDateString('en-US', { 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                })}
-            </div>
-            <div style="color: var(--text-secondary); line-height: 1.6; margin-bottom: 20px; white-space: pre-wrap;">
-                ${notification.message || 'No message provided'}
-            </div>
-            ${notification.image_url ? 
-                `<img src="${notification.image_url}" alt="Notification Image" 
-                      style="max-width: 100%; border-radius: 8px; margin-bottom: 15px;">` : ''
-            }
-            ${notification.pdf_url ? 
-                `<a href="${notification.pdf_url}" target="_blank" 
-                   style="display: inline-block; padding: 8px 16px; background: #f72585; 
-                          color: white; border-radius: 8px; text-decoration: none;">
-                    <i class="fas fa-file-pdf"></i> Download PDF
-                </a>` : ''
-            }
-        </div>
-    `;
-    
-    // Create and show modal
-    const modalDiv = document.createElement('div');
-    modalDiv.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.8);
-        z-index: 10000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        animation: fadeIn 0.3s ease;
-    `;
-    
-    modalDiv.innerHTML = `
         <div style="
-            background: var(--bg-card);
-            border-radius: 12px;
-            max-width: 500px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-            animation: slideUp 0.3s ease;
-        ">
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        " onclick="if(event.target === this) this.remove()">
             <div style="
-                padding: 20px;
-                border-bottom: 1px solid var(--border-color);
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
+                background: var(--bg-card);
+                padding: 2rem;
+                border-radius: 12px;
+                max-width: 600px;
+                width: 90%;
+                max-height: 80vh;
+                overflow-y: auto;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+                animation: slideUp 0.3s ease;
             ">
-                <h3 style="margin: 0; color: var(--text-primary);">
-                    Notification Details
-                </h3>
-                <button onclick="this.closest('div[style*=\"position: fixed\"]').remove()" 
-                        style="
-                            background: none;
-                            border: none;
-                            color: var(--text-muted);
-                            font-size: 1.5rem;
-                            cursor: pointer;
-                            padding: 5px;
-                        ">
-                    &times;
-                </button>
-            </div>
-            ${modalHTML}
-            <div style="padding: 20px; border-top: 1px solid var(--border-color); text-align: right;">
-                <button onclick="this.closest('div[style*=\"position: fixed\"]').remove()" 
-                        style="
-                            padding: 8px 20px;
-                            background: var(--bg-dark);
-                            color: var(--text-primary);
-                            border: 1px solid var(--border-color);
-                            border-radius: 6px;
-                            cursor: pointer;
-                        ">
-                    Close
-                </button>
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1.5rem;">
+                    <h2 style="margin: 0; color: var(--text-primary);">
+                        <i class="fas fa-bell" style="color: var(--primary);"></i>
+                        ${sanitizeHTML(notification.title)}
+                    </h2>
+                    <button onclick="this.closest('[style*=fixed]').remove()" style="
+                        background: none;
+                        border: none;
+                        color: var(--text-secondary);
+                        font-size: 1.5rem;
+                        cursor: pointer;
+                        padding: 0;
+                        width: 30px;
+                        height: 30px;
+                    ">×</button>
+                </div>
+                
+                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                    <i class="fas fa-clock"></i>
+                    ${date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </p>
+                
+                <div style="
+                    background: var(--bg-dark);
+                    padding: 1.5rem;
+                    border-radius: 8px;
+                    margin-bottom: 1rem;
+                    color: var(--text-primary);
+                    line-height: 1.6;
+                ">
+                    ${sanitizeHTML(notification.message || 'No message provided')}
+                </div>
+                
+                ${notification.image_url ? `
+                    <img src="${notification.image_url}" alt="Notification image" style="
+                        width: 100%;
+                        border-radius: 8px;
+                        margin-bottom: 1rem;
+                    ">
+                ` : ''}
+                
+                ${notification.pdf_url ? `
+                    <a href="${notification.pdf_url}" target="_blank" style="
+                        display: inline-block;
+                        padding: 0.75rem 1.5rem;
+                        background: var(--primary);
+                        color: white;
+                        text-decoration: none;
+                        border-radius: 8px;
+                        margin-top: 1rem;
+                    ">
+                        <i class="fas fa-file-pdf"></i> Download PDF
+                    </a>
+                ` : ''}
             </div>
         </div>
     `;
     
+    const modalDiv = document.createElement('div');
+    modalDiv.innerHTML = modalHTML;
     document.body.appendChild(modalDiv);
-    
-    // Close on background click
-    modalDiv.onclick = (e) => {
-        if (e.target === modalDiv) {
-            modalDiv.remove();
-        }
-    };
 }
 
 // View Chat Message Details
@@ -1479,120 +1484,421 @@ async function viewChatMessage(id) {
     }
     
     const date = new Date(message.created_at);
+    
     const modalHTML = `
-        <div style="padding: 20px;">
-            <div style="margin-bottom: 15px;">
-                <div style="font-weight: 600; color: var(--text-primary);">
-                    ${message.user_name}
-                </div>
-                <div style="color: var(--text-muted); font-size: 0.9rem;">
-                    ${date.toLocaleString('en-US', { 
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit'
-                    })}
-                </div>
-            </div>
-            <div style="
-                background: var(--bg-dark);
-                padding: 15px;
-                border-radius: 8px;
-                border: 1px solid var(--border-color);
-                color: var(--text-primary);
-                line-height: 1.6;
-                white-space: pre-wrap;
-            ">
-                ${message.message}
-            </div>
-            ${message.ip_address ? 
-                `<div style="margin-top: 15px; color: var(--text-muted); font-size: 0.9rem;">
-                    IP Address: ${message.ip_address}
-                </div>` : ''
-            }
-        </div>
-    `;
-    
-    // Create and show modal
-    const modalDiv = document.createElement('div');
-    modalDiv.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.8);
-        z-index: 10000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        animation: fadeIn 0.3s ease;
-    `;
-    
-    modalDiv.innerHTML = `
         <div style="
-            background: var(--bg-card);
-            border-radius: 12px;
-            max-width: 500px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-            animation: slideUp 0.3s ease;
-        ">
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        " onclick="if(event.target === this) this.remove()">
             <div style="
-                padding: 20px;
-                border-bottom: 1px solid var(--border-color);
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
+                background: var(--bg-card);
+                padding: 2rem;
+                border-radius: 12px;
+                max-width: 600px;
+                width: 90%;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+                animation: slideUp 0.3s ease;
             ">
-                <h3 style="margin: 0; color: var(--text-primary);">
-                    Message Details
-                </h3>
-                <button onclick="this.closest('div[style*=\"position: fixed\"]').remove()" 
-                        style="
-                            background: none;
-                            border: none;
-                            color: var(--text-muted);
-                            font-size: 1.5rem;
-                            cursor: pointer;
-                            padding: 5px;
-                        ">
-                    &times;
-                </button>
-            </div>
-            ${modalHTML}
-            <div style="padding: 20px; border-top: 1px solid var(--border-color); text-align: right;">
-                <button onclick="this.closest('div[style*=\"position: fixed\"]').remove()" 
-                        style="
-                            padding: 8px 20px;
-                            background: var(--bg-dark);
-                            color: var(--text-primary);
-                            border: 1px solid var(--border-color);
-                            border-radius: 6px;
-                            cursor: pointer;
-                        ">
-                    Close
-                </button>
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1.5rem;">
+                    <h2 style="margin: 0; color: var(--text-primary);">
+                        <i class="fas fa-user-circle" style="color: var(--primary);"></i>
+                        ${sanitizeHTML(message.user_name)}
+                    </h2>
+                    <button onclick="this.closest('[style*=fixed]').remove()" style="
+                        background: none;
+                        border: none;
+                        color: var(--text-secondary);
+                        font-size: 1.5rem;
+                        cursor: pointer;
+                        padding: 0;
+                        width: 30px;
+                        height: 30px;
+                    ">×</button>
+                </div>
+                
+                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                    <i class="fas fa-clock"></i>
+                    ${date.toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </p>
+                
+                <div style="
+                    background: var(--bg-dark);
+                    padding: 1.5rem;
+                    border-radius: 8px;
+                    margin-bottom: 1rem;
+                    color: var(--text-primary);
+                    line-height: 1.6;
+                    white-space: pre-wrap;
+                ">
+                    ${sanitizeHTML(message.message)}
+                </div>
+                
+                ${message.ip_address ? `
+                    <div style="
+                        background: var(--bg-dark);
+                        padding: 1rem;
+                        border-radius: 8px;
+                        color: var(--text-secondary);
+                        font-size: 0.9rem;
+                    ">
+                        <i class="fas fa-network-wired"></i>
+                        IP Address: ${sanitizeHTML(message.ip_address)}
+                    </div>
+                ` : ''}
             </div>
         </div>
     `;
     
+    const modalDiv = document.createElement('div');
+    modalDiv.innerHTML = modalHTML;
     document.body.appendChild(modalDiv);
-    
-    // Close on background click
-    modalDiv.onclick = (e) => {
-        if (e.target === modalDiv) {
-            modalDiv.remove();
-        }
-    };
 }
 
 // ==========================================
-// CSS ANIMATIONS FOR MODALS
+// IMAGE & PDF PREVIEW
 // ==========================================
+
+let selectedImageFile = null;
+let selectedPDFFile = null;
+
+function previewImage(event) {
+    const file = event.target.files[0];
+    const previewContainer = document.getElementById('imagePreviewContainer');
+    const preview = document.getElementById('imagePreview');
+    const fileName = document.getElementById('imageFileName');
+    const fileSize = document.getElementById('imageFileSize');
+    const dimensions = document.getElementById('imageDimensions');
+    
+    if (file) {
+        if (!file.type.startsWith('image/')) {
+            showToast('Please select an image file', 'error');
+            event.target.value = '';
+            return;
+        }
+        
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('Image size should be less than 5MB', 'error');
+            event.target.value = '';
+            return;
+        }
+        
+        selectedImageFile = file;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            
+            const img = new Image();
+            img.onload = function() {
+                if (dimensions) {
+                    dimensions.textContent = `${img.width} × ${img.height} pixels`;
+                }
+            };
+            img.src = e.target.result;
+            
+            const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+            const sizeInKB = (file.size / 1024).toFixed(0);
+            
+            if (fileName) {
+                fileName.textContent = file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name;
+            }
+            if (fileSize) {
+                fileSize.textContent = sizeInMB > 1 ? `${sizeInMB} MB` : `${sizeInKB} KB`;
+            }
+            if (previewContainer) {
+                previewContainer.style.display = 'block';
+            }
+            
+            showToast('Image selected successfully ✓', 'success');
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function removeImage() {
+    const imageInput = document.getElementById('notificationImage');
+    const previewContainer = document.getElementById('imagePreviewContainer');
+    const preview = document.getElementById('imagePreview');
+    
+    if (imageInput) imageInput.value = '';
+    if (preview) preview.src = '';
+    if (previewContainer) previewContainer.style.display = 'none';
+    
+    selectedImageFile = null;
+    showToast('Image removed', 'info');
+}
+
+function previewPDF(event) {
+    const file = event.target.files[0];
+    let previewContainer = document.getElementById('pdfPreviewContainer');
+    
+    if (!previewContainer) {
+        const pdfUploadSection = document.querySelector('.form-group:has(#notificationPdf)');
+        if (pdfUploadSection) {
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <div id="pdfPreviewContainer" class="file-preview" style="display: none; margin-top: 1rem;">
+                    <div class="file-preview-content">
+                        <div class="file-icon">
+                            <i class="fas fa-file-pdf" style="color: #f72585;"></i>
+                            <span class="file-badge" id="pdfBadge">PDF</span>
+                        </div>
+                        <div class="file-info">
+                            <div class="file-name" id="pdfFileName">document.pdf</div>
+                            <div class="file-meta">
+                                <span id="pdfFileSize">0 KB</span> • 
+                                <span id="pdfPageCount">Pages: 0</span>
+                            </div>
+                        </div>
+                        <div class="file-actions">
+                            <button type="button" class="btn-icon" onclick="removePDF()" title="Remove">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            <button type="button" class="btn-icon" onclick="viewPDFInfo()" title="Details">
+                                <i class="fas fa-info-circle"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            pdfUploadSection.appendChild(div);
+            previewContainer = document.getElementById('pdfPreviewContainer');
+        }
+    }
+    
+    if (file) {
+        if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+            showToast('Please select a PDF file', 'error');
+            event.target.value = '';
+            return;
+        }
+        
+        if (file.size > 10 * 1024 * 1024) {
+            showToast('PDF size should be less than 10MB', 'error');
+            event.target.value = '';
+            return;
+        }
+        
+        selectedPDFFile = file;
+        
+        const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+        const sizeInKB = (file.size / 1024).toFixed(0);
+        const estimatedPages = Math.max(1, Math.round(file.size / 50000));
+        
+        const fileName = document.getElementById('pdfFileName');
+        const fileSize = document.getElementById('pdfFileSize');
+        const pageCount = document.getElementById('pdfPageCount');
+        
+        if (fileName) {
+            fileName.textContent = file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name;
+        }
+        if (fileSize) {
+            fileSize.textContent = sizeInMB > 1 ? `${sizeInMB} MB` : `${sizeInKB} KB`;
+        }
+        if (pageCount) {
+            pageCount.textContent = `Pages: ${estimatedPages} (est)`;
+        }
+        if (previewContainer) {
+            previewContainer.style.display = 'block';
+        }
+        
+        showToast('PDF selected successfully ✓', 'success');
+    }
+}
+
+function removePDF() {
+    const pdfInput = document.getElementById('notificationPdf');
+    const previewContainer = document.getElementById('pdfPreviewContainer');
+    
+    if (pdfInput) pdfInput.value = '';
+    if (previewContainer) previewContainer.style.display = 'none';
+    
+    selectedPDFFile = null;
+    showToast('PDF removed', 'info');
+}
+
+function viewFullImage() {
+    if (!selectedImageFile) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const modalDiv = document.createElement('div');
+        modalDiv.innerHTML = `
+            <div id="fullImageModal" style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.95);
+                z-index: 10001;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                animation: fadeIn 0.3s ease;
+            " onclick="if(event.target === this) this.remove()">
+                <button onclick="this.parentElement.remove()" style="
+                    position: absolute;
+                    top: 2rem;
+                    right: 2rem;
+                    background: rgba(255,255,255,0.1);
+                    border: none;
+                    color: white;
+                    font-size: 2rem;
+                    width: 50px;
+                    height: 50px;
+                    border-radius: 50%;
+                    cursor: pointer;
+                    z-index: 10002;
+                ">×</button>
+                <div style="max-width: 90%; max-height: 90%; text-align: center;">
+                    <img src="${e.target.result}" style="max-width: 100%; max-height: 80vh; border-radius: 8px; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+                    <p style="color: white; margin-top: 1rem;">${sanitizeHTML(selectedImageFile.name)} • ${(selectedImageFile.size / 1024).toFixed(0)}KB</p>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalDiv);
+        
+        document.addEventListener('keydown', function closeOnEsc(e) {
+            if (e.key === 'Escape') {
+                modalDiv.remove();
+                document.removeEventListener('keydown', closeOnEsc);
+            }
+        });
+    };
+    reader.readAsDataURL(selectedImageFile);
+}
+
+function closeFullImage() {
+    const modal = document.getElementById('fullImageModal');
+    if (modal?.parentElement) {
+        modal.parentElement.remove();
+    }
+}
+
+function viewPDFInfo() {
+    if (!selectedPDFFile) return;
+    
+    const sizeInMB = (selectedPDFFile.size / (1024 * 1024)).toFixed(2);
+    const sizeInKB = (selectedPDFFile.size / 1024).toFixed(0);
+    const lastModified = new Date(selectedPDFFile.lastModified).toLocaleDateString();
+    
+    const modalDiv = document.createElement('div');
+    modalDiv.innerHTML = `
+        <div id="pdfInfoModal" style="
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        " onclick="if(event.target === this) this.remove()">
+            <div style="
+                background: var(--bg-card);
+                padding: 2rem;
+                border-radius: 12px;
+                max-width: 500px;
+                width: 90%;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            ">
+                <button onclick="this.closest('[id=pdfInfoModal]').parentElement.remove()" style="
+                    float: right;
+                    background: none;
+                    border: none;
+                    color: var(--text-secondary);
+                    font-size: 1.5rem;
+                    cursor: pointer;
+                ">×</button>
+                
+                <h3 style="margin: 0 0 1.5rem 0; color: var(--text-primary);">
+                    <i class="fas fa-file-pdf" style="color: #f72585;"></i>
+                    PDF Details
+                </h3>
+                
+                <div style="background: var(--bg-dark); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                    <div style="margin-bottom: 0.75rem;">
+                        <strong style="color: var(--text-secondary);">File Name</strong>
+                        <div style="color: var(--text-primary); margin-top: 0.25rem;">${sanitizeHTML(selectedPDFFile.name)}</div>
+                    </div>
+                    <div style="margin-bottom: 0.75rem;">
+                        <strong style="color: var(--text-secondary);">File Size</strong>
+                        <div style="color: var(--text-primary); margin-top: 0.25rem;">${sizeInMB > 1 ? `${sizeInMB} MB` : `${sizeInKB} KB`} (${selectedPDFFile.size.toLocaleString()} bytes)</div>
+                    </div>
+                    <div style="margin-bottom: 0.75rem;">
+                        <strong style="color: var(--text-secondary);">File Type</strong>
+                        <div style="color: var(--text-primary); margin-top: 0.25rem;">${selectedPDFFile.type || 'application/pdf'}</div>
+                    </div>
+                    <div>
+                        <strong style="color: var(--text-secondary);">Last Modified</strong>
+                        <div style="color: var(--text-primary); margin-top: 0.25rem;">${lastModified}</div>
+                    </div>
+                </div>
+                
+                <button onclick="this.closest('[id=pdfInfoModal]').parentElement.remove()" style="
+                    width: 100%;
+                    padding: 0.75rem;
+                    background: var(--primary);
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-weight: 500;
+                ">Close</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modalDiv);
+}
+
+function closePDFInfo() {
+    const modal = document.getElementById('pdfInfoModal');
+    if (modal?.parentElement) {
+        modal.parentElement.remove();
+    }
+}
+
+// ==========================================
+// SECTION SWITCHING
+// ==========================================
+
+function showSection(section) {
+    document.querySelectorAll('.content-section').forEach(el => {
+        el.classList.remove('active');
+    });
+    
+    document.querySelectorAll('.sidebar-menu li').forEach(el => {
+        el.classList.remove('active');
+    });
+    
+    const sectionEl = document.getElementById(`section-${section}`);
+    if (sectionEl) {
+        sectionEl.classList.add('active');
+    }
+    
+    const menuItem = document.querySelector(`.sidebar-menu li[onclick*="${section}"]`);
+    if (menuItem) {
+        menuItem.classList.add('active');
+    }
+}
+
+// ==========================================
+// CSS ANIMATIONS
+// ==========================================
+
 const style = document.createElement('style');
 style.textContent = `
     @keyframes fadeIn {
@@ -1601,11 +1907,11 @@ style.textContent = `
     }
     
     @keyframes slideUp {
-        from { 
+        from {
             opacity: 0;
             transform: translateY(20px);
         }
-        to { 
+        to {
             opacity: 1;
             transform: translateY(0);
         }
@@ -1620,438 +1926,13 @@ style.textContent = `
         0%, 100% { opacity: 1; }
         50% { opacity: 0.7; }
     }
-    
-    .confirmation-modal button:hover {
-        transform: translateY(-2px);
-    }
-    
-    .confirmation-modal button:active {
-        transform: translateY(0);
-    }
 `;
 document.head.appendChild(style);
 
 // ==========================================
-// SECTION SWITCHING
+// EXPORT FUNCTIONS TO WINDOW
 // ==========================================
-function showSection(section) {
-    // Hide all sections
-    document.querySelectorAll('.content-section').forEach(el => {
-        el.classList.remove('active');
-    });
-    
-    // Remove active from all menu items
-    document.querySelectorAll('.sidebar-menu li').forEach(el => {
-        el.classList.remove('active');
-    });
-    
-    // Show selected section
-    const sectionEl = document.getElementById(`section-${section}`);
-    if (sectionEl) {
-        sectionEl.classList.add('active');
-    }
-    
-    // Set active menu item
-    const menuItem = document.querySelector(`.sidebar-menu li[onclick*="${section}"]`);
-    if (menuItem) {
-        menuItem.classList.add('active');
-    }
-}
 
-// ==========================================
-// IMAGE PREVIEW FUNCTIONS
-// ==========================================
-let selectedImageFile = null;
-
-function previewImage(event) {
-    const file = event.target.files[0];
-    const previewContainer = document.getElementById('imagePreviewContainer');
-    const preview = document.getElementById('imagePreview');
-    const fileName = document.getElementById('imageFileName');
-    const fileSize = document.getElementById('imageFileSize');
-    const dimensions = document.getElementById('imageDimensions');
-    
-    if (file) {
-        // Check file type
-        if (!file.type.startsWith('image/')) {
-            showToast('Please select an image file (JPEG, PNG, GIF, etc.)', 'error');
-            event.target.value = '';
-            return;
-        }
-        
-        // Check file size (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            showToast('Image size should be less than 5MB', 'error');
-            event.target.value = '';
-            return;
-        }
-        
-        selectedImageFile = file;
-        
-        // Format file size
-        const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
-        const sizeInKB = (file.size / 1024).toFixed(0);
-        
-        // Create image object to get dimensions
-        const img = new Image();
-        const reader = new FileReader();
-        
-        reader.onload = function(e) {
-            preview.src = e.target.result;
-            
-            img.onload = function() {
-                dimensions.textContent = `${img.width} × ${img.height} pixels`;
-                
-                // Set badge color based on image type
-                const badge = document.getElementById('imageBadge');
-                if (file.type.includes('jpeg') || file.type.includes('jpg')) {
-                    badge.style.background = '#FF6B6B';
-                } else if (file.type.includes('png')) {
-                    badge.style.background = '#4ECDC4';
-                } else if (file.type.includes('gif')) {
-                    badge.style.background = '#FFD166';
-                } else {
-                    badge.style.background = var(--primary);
-                }
-                
-                // Update file info
-                fileName.textContent = file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name;
-                fileSize.textContent = sizeInMB > 1 ? `${sizeInMB} MB` : `${sizeInKB} KB`;
-                
-                // Show preview container
-                previewContainer.style.display = 'block';
-                
-                showToast('Image selected successfully', 'success');
-            };
-            
-            img.src = e.target.result;
-        };
-        
-        reader.readAsDataURL(file);
-    }
-}
-
-function removeImage() {
-    const imageInput = document.getElementById('notificationImage');
-    const previewContainer = document.getElementById('imagePreviewContainer');
-    const preview = document.getElementById('imagePreview');
-    
-    imageInput.value = '';
-    preview.src = '';
-    previewContainer.style.display = 'none';
-    selectedImageFile = null;
-    
-    showToast('Image removed', 'info');
-}
-
-function viewFullImage() {
-    if (!selectedImageFile) return;
-    
-    const reader = new FileReader();
-    
-    reader.onload = function(e) {
-        const modalHTML = `
-            <div class="full-image-modal" id="fullImageModal">
-                <button class="close-btn" onclick="closeFullImage()">&times;</button>
-                <img src="${e.target.result}" alt="Full Image Preview">
-                <div style="position: absolute; bottom: 20px; left: 0; right: 0; text-align: center; color: white; font-size: 0.9rem;">
-                    ${selectedImageFile.name} • ${(selectedImageFile.size / 1024).toFixed(0)}KB
-                </div>
-            </div>
-        `;
-        
-        const modalDiv = document.createElement('div');
-        modalDiv.innerHTML = modalHTML;
-        document.body.appendChild(modalDiv);
-        
-        // Close on ESC key
-        document.addEventListener('keydown', function closeOnEsc(e) {
-            if (e.key === 'Escape') {
-                closeFullImage();
-                document.removeEventListener('keydown', closeOnEsc);
-            }
-        });
-        
-        // Close on background click
-        modalDiv.querySelector('.full-image-modal').onclick = function(e) {
-            if (e.target === this) {
-                closeFullImage();
-            }
-        };
-    };
-    
-    reader.readAsDataURL(selectedImageFile);
-}
-
-function closeFullImage() {
-    const modal = document.getElementById('fullImageModal');
-    if (modal && modal.parentElement) {
-        modal.parentElement.remove();
-    }
-}
-
-// ==========================================
-// PDF PREVIEW FUNCTIONS
-// ==========================================
-let selectedPDFFile = null;
-
-function previewPDF(event) {
-    const file = event.target.files[0];
-    const previewContainer = document.getElementById('pdfPreviewContainer');
-    const fileName = document.getElementById('pdfFileName');
-    const fileSize = document.getElementById('pdfFileSize');
-    const pageCount = document.getElementById('pdfPageCount');
-    
-    if (!previewContainer) {
-        // Create PDF preview container if it doesn't exist
-        const pdfPreviewHTML = `
-            <div class="pdf-preview-container" id="pdfPreviewContainer" style="display: none; margin-top: 15px;">
-                <div style="background: var(--bg-dark); padding: 15px; border-radius: 10px; border: 1px solid var(--border-color);">
-                    <div style="display: flex; align-items: center; gap: 15px;">
-                        <div style="position: relative;">
-                            <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #f72585, #e11575); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
-                                <i class="fas fa-file-pdf" style="font-size: 2rem; color: white;"></i>
-                            </div>
-                            <div style="position: absolute; top: -8px; right: -8px; background: #f72585; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px;">
-                                PDF
-                            </div>
-                        </div>
-                        <div style="flex: 1;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                                <strong id="pdfFileName" style="color: var(--text-primary); font-size: 0.9rem;"></strong>
-                                <span id="pdfFileSize" style="color: var(--text-muted); font-size: 0.8rem;"></span>
-                            </div>
-                            <div id="pdfPageCount" style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 8px;">
-                                <i class="fas fa-file-alt"></i> Pages: Estimating...
-                            </div>
-                            <div style="display: flex; gap: 10px;">
-                                <button type="button" onclick="removePDF()" style="padding: 5px 12px; background: var(--danger); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; gap: 5px;">
-                                    <i class="fas fa-trash"></i> Remove
-                                </button>
-                                <button type="button" onclick="viewPDFInfo()" style="padding: 5px 12px; background: #f72585; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; gap: 5px;">
-                                    <i class="fas fa-info-circle"></i> Details
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        const pdfUploadSection = document.querySelector('.form-group:has(#notificationPdf)');
-        if (pdfUploadSection) {
-            const div = document.createElement('div');
-            div.innerHTML = pdfPreviewHTML;
-            pdfUploadSection.appendChild(div);
-        }
-    }
-    
-    if (file) {
-        // Check file type
-        if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-            showToast('Please select a PDF file', 'error');
-            event.target.value = '';
-            return;
-        }
-        
-        // Check file size (max 10MB)
-        if (file.size > 10 * 1024 * 1024) {
-            showToast('PDF size should be less than 10MB', 'error');
-            event.target.value = '';
-            return;
-        }
-        
-        selectedPDFFile = file;
-        
-        // Format file size
-        const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
-        const sizeInKB = (file.size / 1024).toFixed(0);
-        
-        // Update file info
-        const updatedFileName = document.getElementById('pdfFileName');
-        const updatedFileSize = document.getElementById('pdfFileSize');
-        const updatedPageCount = document.getElementById('pdfPageCount');
-        
-        if (updatedFileName) {
-            updatedFileName.textContent = file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name;
-        }
-        
-        if (updatedFileSize) {
-            updatedFileSize.textContent = sizeInMB > 1 ? `${sizeInMB} MB` : `${sizeInKB} KB`;
-        }
-        
-        if (updatedPageCount) {
-            // Try to estimate page count (this is approximate)
-            const estimatedPages = Math.max(1, Math.round(file.size / 50000)); // ~50KB per page
-            updatedPageCount.innerHTML = `<i class="fas fa-file-alt"></i> Pages: ${estimatedPages} (estimated)`;
-        }
-        
-        // Show preview container
-        const updatedPreviewContainer = document.getElementById('pdfPreviewContainer');
-        if (updatedPreviewContainer) {
-            updatedPreviewContainer.style.display = 'block';
-        }
-        
-        showToast('PDF selected successfully', 'success');
-    }
-}
-
-function removePDF() {
-    const pdfInput = document.getElementById('notificationPdf');
-    const previewContainer = document.getElementById('pdfPreviewContainer');
-    
-    if (pdfInput) pdfInput.value = '';
-    if (previewContainer) previewContainer.style.display = 'none';
-    selectedPDFFile = null;
-    
-    showToast('PDF removed', 'info');
-}
-
-function viewPDFInfo() {
-    if (!selectedPDFFile) return;
-    
-    const sizeInMB = (selectedPDFFile.size / (1024 * 1024)).toFixed(2);
-    const sizeInKB = (selectedPDFFile.size / 1024).toFixed(0);
-    const lastModified = new Date(selectedPDFFile.lastModified).toLocaleDateString();
-    
-    const modalHTML = `
-        <div class="full-image-modal" id="pdfInfoModal" style="background: rgba(0, 0, 0, 0.8);">
-            <button class="close-btn" onclick="closePDFInfo()">&times;</button>
-            <div style="background: var(--bg-card); padding: 30px; border-radius: 12px; max-width: 400px; width: 90%;">
-                <h3 style="color: var(--text-primary); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-file-pdf" style="color: #f72585;"></i> PDF Details
-                </h3>
-                <div style="color: var(--text-secondary);">
-                    <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color);">
-                        <div style="font-weight: 500; color: var(--text-primary); margin-bottom: 5px;">File Name</div>
-                        <div>${selectedPDFFile.name}</div>
-                    </div>
-                    <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color);">
-                        <div style="font-weight: 500; color: var(--text-primary); margin-bottom: 5px;">File Size</div>
-                        <div>${sizeInMB > 1 ? `${sizeInMB} MB` : `${sizeInKB} KB`} (${selectedPDFFile.size.toLocaleString()} bytes)</div>
-                    </div>
-                    <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color);">
-                        <div style="font-weight: 500; color: var(--text-primary); margin-bottom: 5px;">File Type</div>
-                        <div>${selectedPDFFile.type || 'application/pdf'}</div>
-                    </div>
-                    <div style="margin-bottom: 15px;">
-                        <div style="font-weight: 500; color: var(--text-primary); margin-bottom: 5px;">Last Modified</div>
-                        <div>${lastModified}</div>
-                    </div>
-                </div>
-                <div style="margin-top: 20px; text-align: center;">
-                    <button onclick="closePDFInfo()" style="padding: 8px 20px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        Close
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    const modalDiv = document.createElement('div');
-    modalDiv.innerHTML = modalHTML;
-    document.body.appendChild(modalDiv);
-    
-    // Close on ESC key
-    document.addEventListener('keydown', function closeOnEsc(e) {
-        if (e.key === 'Escape') {
-            closePDFInfo();
-            document.removeEventListener('keydown', closeOnEsc);
-        }
-    });
-}
-
-function closePDFInfo() {
-    const modal = document.getElementById('pdfInfoModal');
-    if (modal && modal.parentElement) {
-        modal.parentElement.remove();
-    }
-}
-
-// ==========================================
-// UPDATED SEND NOTIFICATION WITH FILE VALIDATION
-// ==========================================
-async function sendNotification() {
-    const title = document.getElementById('notificationTitle')?.value.trim();
-    const message = document.getElementById('notificationMessage')?.value.trim();
-    const isImportant = document.getElementById('notificationImportant')?.checked;
-    const isPersistent = document.getElementById('notificationPersistent')?.checked;
-    
-    if (!title) {
-        showToast('Please enter a notification title', 'error');
-        return;
-    }
-    
-    showLoading(true);
-    
-    try {
-        // Create notification data
-        const notificationData = {
-            title: title,
-            message: message || '',
-            is_active: true,
-            show_until_dismissed: isPersistent,
-            priority: isImportant ? 3 : 1
-        };
-        
-        // If image is selected, add a note about it
-        if (selectedImageFile) {
-            notificationData.message += `\n\n[Image attached: ${selectedImageFile.name}]`;
-        }
-        
-        // If PDF is selected, add a note about it
-        if (selectedPDFFile) {
-            notificationData.message += `\n\n[PDF attached: ${selectedPDFFile.name}]`;
-        }
-        
-        console.log('Sending notification with data:', notificationData);
-        
-        const { error } = await supabase
-            .from('notifications')
-            .insert([notificationData]);
-        
-        if (error) throw error;
-        
-        showToast('Notification sent successfully!', 'success');
-        
-        // Clear form
-        document.getElementById('notificationTitle').value = '';
-        document.getElementById('notificationMessage').value = '';
-        document.getElementById('notificationImportant').checked = false;
-        document.getElementById('notificationPersistent').checked = false;
-        
-        // Clear file inputs and previews
-        removeImage();
-        removePDF();
-        
-        // Refresh data
-        await loadNotifications();
-        await loadDashboardStats();
-        await loadRecentActivity();
-        
-    } catch (error) {
-        console.error('Error sending notification:', error);
-        showToast('Failed to send notification: ' + error.message, 'error');
-    } finally {
-        showLoading(false);
-    }
-}
-
-// ==========================================
-// WINDOW EXPORTS
-// ==========================================
-window.previewImage = previewImage;
-window.removeImage = removeImage;
-window.viewFullImage = viewFullImage;
-window.closeFullImage = closeFullImage;
-window.previewPDF = previewPDF;
-window.removePDF = removePDF;
-window.viewPDFInfo = viewPDFInfo;
-window.closePDFInfo = closePDFInfo;
-
-// ==========================================
-// EXPORT FUNCTIONS TO WINDOW OBJECT
-// ==========================================
 window.adminLogin = adminLogin;
 window.logout = logout;
 window.showSection = showSection;
@@ -2072,6 +1953,13 @@ window.testSnowEffect = testSnowEffect;
 window.testConfettiEffect = testConfettiEffect;
 window.stopAllEffects = stopAllEffects;
 window.backupDatabase = backupDatabase;
+window.previewImage = previewImage;
+window.removeImage = removeImage;
+window.viewFullImage = viewFullImage;
+window.closeFullImage = closeFullImage;
+window.previewPDF = previewPDF;
+window.removePDF = removePDF;
+window.viewPDFInfo = viewPDFInfo;
+window.closePDFInfo = closePDFInfo;
 
-console.log('Admin panel JavaScript loaded successfully! 🚀');
-
+console.log('✅ Admin panel JavaScript loaded successfully! 🚀');
