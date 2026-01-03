@@ -373,88 +373,144 @@
 </thead>
 
                     <!-- Site Effects Section -->
-                    <section id="section-effects" class="content-section">
-                        <div class="section-header">
-                            <h2><i class="fas fa-magic"></i> Site Effects & Themes</h2>
-                            <p>Customize visual effects and themes</p>
-                        </div>
-                        
-                        <div class="effects-grid">
-                            <div class="effect-card">
-                                <div class="effect-icon">
-                                    <i class="fas fa-snowflake"></i>
-                                </div>
-                                <div class="effect-content">
-                                    <h3>Snow Effect</h3>
-                                    <p>Enable snowfall animation for seasonal events</p>
-                                    <div class="toggle-switch">
-                                        <input type="checkbox" id="snowEffect" onchange="toggleEffect('snow', this.checked)">
-                                        <span class="slider"></span>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="effect-card">
-                                <div class="effect-icon">
-                                    <i class="fas fa-fireworks"></i>
-                                </div>
-                                <div class="effect-content">
-                                    <h3>Confetti Effect</h3>
-                                    <p>Celebratory confetti animation</p>
-                                    <div class="toggle-switch">
-                                        <input type="checkbox" id="confettiEffect" onchange="toggleEffect('confetti', this.checked)">
-                                        <span class="slider"></span>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="effect-card">
-                                <div class="effect-icon">
-                                    <i class="fas fa-palette"></i>
-                                </div>
-                                <div class="effect-content">
-                                    <h3>Dark Theme</h3>
-                                    <p>Enable dark mode for all users</p>
-                                    <div class="toggle-switch">
-                                        <input type="checkbox" id="darkTheme" onchange="toggleTheme('dark', this.checked)">
-                                        <span class="slider"></span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="theme-preview">
-                            <h3><i class="fas fa-eye"></i> Theme Preview</h3>
-                            <div class="preview-grid">
-                                <div class="preview-card" onclick="selectTheme('default')">
-                                    <div class="preview-header" style="background: #667eea;">
-                                        <h4>Default Theme</h4>
-                                    </div>
-                                    <div class="preview-body">
-                                        <p>Blue & Purple gradient</p>
-                                    </div>
-                                </div>
-                                
-                                <div class="preview-card" onclick="selectTheme('dark')">
-                                    <div class="preview-header" style="background: #1a1f3a;">
-                                        <h4>Dark Theme</h4>
-                                    </div>
-                                    <div class="preview-body">
-                                        <p>Dark blue background</p>
-                                    </div>
-                                </div>
-                                
-                                <div class="preview-card" onclick="selectTheme('light')">
-                                    <div class="preview-header" style="background: #f8f9fa; color: #333;">
-                                        <h4>Light Theme</h4>
-                                    </div>
-                                    <div class="preview-body">
-                                        <p>Clean light mode</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
+                   <!-- Site Effects Section -->
+<section id="section-effects" class="content-section">
+    <div class="section-header">
+        <h2><i class="fas fa-magic"></i> Site Effects & Themes</h2>
+        <p>Customize visual effects and themes</p>
+    </div>
+    
+    <div class="effects-grid">
+        <div class="effect-card">
+            <div class="effect-icon" style="background: linear-gradient(135deg, #4cc9f0, #2a9d8f);">
+                <i class="fas fa-snowflake"></i>
+            </div>
+            <div class="effect-content">
+                <h3>Snow Effect</h3>
+                <p>Enable snowfall animation for seasonal events</p>
+                <div style="display: flex; align-items: center; gap: 15px; margin-top: 15px;">
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="snow_effect" onchange="toggleEffect('snow', this.checked)">
+                        <span class="slider"></span>
+                    </div>
+                    <button class="btn-secondary" onclick="testSnowEffect()" style="padding: 8px 16px;">
+                        <i class="fas fa-play"></i> Test
+                    </button>
+                </div>
+                <small style="color: #94a3b8; font-size: 0.8rem; display: block; margin-top: 8px;">
+                    Best experienced in December
+                </small>
+            </div>
+        </div>
+        
+        <div class="effect-card">
+            <div class="effect-icon" style="background: linear-gradient(135deg, #f72585, #f8961e);">
+                <i class="fas fa-fireworks"></i>
+            </div>
+            <div class="effect-content">
+                <h3>Confetti Effect</h3>
+                <p>Celebratory confetti animation for New Year</p>
+                <div style="display: flex; align-items: center; gap: 15px; margin-top: 15px;">
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="confetti_effect" onchange="toggleEffect('confetti', this.checked)">
+                        <span class="slider"></span>
+                    </div>
+                    <button class="btn-secondary" onclick="testConfettiEffect()" style="padding: 8px 16px;">
+                        <i class="fas fa-play"></i> Test
+                    </button>
+                </div>
+                <small style="color: #94a3b8; font-size: 0.8rem; display: block; margin-top: 8px;">
+                    Perfect for New Year celebrations
+                </small>
+            </div>
+        </div>
+        
+        <div class="effect-card">
+            <div class="effect-icon" style="background: linear-gradient(135deg, #7209b7, #3a0ca3);">
+                <i class="fas fa-palette"></i>
+            </div>
+            <div class="effect-content">
+                <h3>Dark Theme</h3>
+                <p>Enable dark mode for all users</p>
+                <div class="toggle-switch" style="margin-top: 15px;">
+                    <input type="checkbox" id="dark_theme" onchange="toggleTheme('dark', this.checked)" checked>
+                    <span class="slider"></span>
+                </div>
+                <small style="color: #94a3b8; font-size: 0.8rem; display: block; margin-top: 8px;">
+                    Default theme optimized for studying
+                </small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="theme-preview">
+        <h3><i class="fas fa-eye"></i> Theme Preview</h3>
+        <div class="preview-grid">
+            <div class="preview-card" onclick="selectTheme('default')">
+                <div class="preview-header" style="background: linear-gradient(135deg, #4361ee, #7209b7);">
+                    <h4><i class="fas fa-star"></i> Default Theme</h4>
+                </div>
+                <div class="preview-body">
+                    <p>Professional blue & purple gradient</p>
+                    <small style="color: #94a3b8;">Current active theme</small>
+                </div>
+            </div>
+            
+            <div class="preview-card" onclick="selectTheme('dark')">
+                <div class="preview-header" style="background: #1a1f3a;">
+                    <h4><i class="fas fa-moon"></i> Dark Theme</h4>
+                </div>
+                <div class="preview-body">
+                    <p>Dark blue background for night study</p>
+                    <small style="color: #94a3b8;">Easy on eyes</small>
+                </div>
+            </div>
+            
+            <div class="preview-card" onclick="selectTheme('light')">
+                <div class="preview-header" style="background: #f8f9fa; color: #333;">
+                    <h4><i class="fas fa-sun"></i> Light Theme</h4>
+                </div>
+                <div class="preview-body">
+                    <p>Clean light mode for daytime</p>
+                    <small style="color: #666;">Bright and clear</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="form-card mt-20">
+        <h3><i class="fas fa-sliders-h"></i> Effects Controls</h3>
+        <p>Manually control the visual effects</p>
+        <div class="form-row">
+            <button class="btn-primary" onclick="testSnowEffect()">
+                <i class="fas fa-snowflake"></i> Start Snow Effect
+            </button>
+            <button class="btn-primary" onclick="testConfettiEffect()">
+                <i class="fas fa-fireworks"></i> Start Confetti Effect
+            </button>
+            <button class="btn-secondary" onclick="stopAllEffects()">
+                <i class="fas fa-stop"></i> Stop All Effects
+            </button>
+        </div>
+        <div class="form-row mt-10">
+            <div class="form-group">
+                <label>Effect Intensity</label>
+                <select id="effectIntensity" class="form-control">
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Auto-start seasonal effects</label>
+                <div class="toggle-switch">
+                    <input type="checkbox" id="auto_seasonal" checked>
+                    <span class="slider"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 
                     <!-- Settings Section -->
                     <section id="section-settings" class="content-section">
@@ -638,4 +694,5 @@
     </script>
 </body>
 </html>
+
 
