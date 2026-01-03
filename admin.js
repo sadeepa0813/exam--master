@@ -7,7 +7,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 // Supabase Configuration
 const SUPABASE_URL = 'https://nstnkxtxlqelwnefkmaj.supabase.co';
 // ⚠️ IMPORTANT: Replace this with your ANON key, NOT service_role key!
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zdG5reHR4bHFlbHduZWZrbWFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY3NTgzNDgsImV4cCI6MjA1MjMzNDM0OH0.YOUR_ANON_KEY_HERE';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zdG5reHR4bHFlbHduZWZrbWFqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2Njg0NTc0OCwiZXhwIjoyMDgyNDIxNzQ4fQ.7nxY8FIR05sbZ33e4-hpZx6n8l-WA-gnlk2pOwxo2z4';
 
 // Initialize Supabase Client
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1963,3 +1963,4 @@ window.viewPDFInfo = viewPDFInfo;
 window.closePDFInfo = closePDFInfo;
 
 console.log('✅ Admin panel JavaScript loaded successfully! 🚀');
+
