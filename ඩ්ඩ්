@@ -1,0 +1,144 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.admin_users (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  email character varying NOT NULL UNIQUE CHECK (email::text ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'::text),
+  username character varying NOT NULL UNIQUE,
+  full_name character varying,
+  role character varying DEFAULT 'admin'::character varying CHECK (role::text = ANY (ARRAY['admin'::character varying::text, 'super_admin'::character varying::text, 'moderator'::character varying::text, 'viewer'::character varying::text])),
+  is_active boolean DEFAULT true,
+  last_login timestamp with time zone,
+  login_count integer DEFAULT 0,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT admin_users_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.audit_log (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  action character varying NOT NULL,
+  table_name character varying,
+  record_id uuid,
+  old_data jsonb,
+  new_data jsonb,
+  performed_by character varying,
+  performed_by_id uuid,
+  ip_address inet,
+  user_agent text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT audit_log_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.banned_users (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_name character varying NOT NULL,
+  ip_address character varying,
+  reason text,
+  banned_at timestamp with time zone DEFAULT now(),
+  banned_by character varying,
+  CONSTRAINT banned_users_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.comments (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_name character varying NOT NULL,
+  message text NOT NULL,
+  ip_address character varying,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT comments_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.exam_results (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  exam_id uuid,
+  student_name character varying NOT NULL,
+  student_index character varying,
+  subject character varying,
+  marks_obtained numeric CHECK (marks_obtained >= 0::numeric),
+  total_marks numeric DEFAULT 100,
+  grade character varying CHECK (grade::text = ANY (ARRAY['A+'::character varying::text, 'A'::character varying::text, 'A-'::character varying::text, 'B+'::character varying::text, 'B'::character varying::text, 'B-'::character varying::text, 'C+'::character varying::text, 'C'::character varying::text, 'C-'::character varying::text, 'D'::character varying::text, 'F'::character varying::text, 'AB'::character varying::text])),
+  result_status character varying DEFAULT 'pending'::character varying CHECK (result_status::text = ANY (ARRAY['pending'::character varying::text, 'published'::character varying::text, 'archived'::character varying::text])),
+  published_by character varying,
+  published_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT exam_results_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.exam_subjects (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  exam_id uuid,
+  subject_name character varying NOT NULL,
+  subject_code character varying,
+  exam_time time without time zone,
+  duration_minutes integer DEFAULT 180,
+  max_marks integer DEFAULT 100,
+  pass_marks integer DEFAULT 35,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT exam_subjects_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.exams (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  batch_name character varying NOT NULL,
+  exam_date timestamp with time zone NOT NULL,
+  description text,
+  status character varying DEFAULT 'enabled'::character varying CHECK (status::text = ANY (ARRAY['enabled'::character varying::text, 'disabled'::character varying::text])),
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT exams_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.file_uploads (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  filename character varying NOT NULL,
+  original_name character varying,
+  file_type character varying NOT NULL,
+  file_size bigint CHECK (file_size > 0),
+  mime_type character varying,
+  upload_path text NOT NULL,
+  bucket_name character varying DEFAULT 'uploads'::character varying,
+  uploaded_by character varying,
+  is_public boolean DEFAULT true,
+  access_count integer DEFAULT 0,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT file_uploads_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.notifications (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  title character varying NOT NULL,
+  message text,
+  image_url text,
+  pdf_url text,
+  is_active boolean DEFAULT true,
+  show_until_dismissed boolean DEFAULT false,
+  priority integer DEFAULT 1,
+  created_at timestamp with time zone DEFAULT now(),
+  created_by character varying,
+  CONSTRAINT notifications_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.profiles (
+  id uuid NOT NULL,
+  email text,
+  role text DEFAULT 'user'::text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT profiles_pkey PRIMARY KEY (id),
+  CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.site_settings (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  setting_key character varying NOT NULL UNIQUE,
+  setting_value text,
+  is_enabled boolean DEFAULT true,
+  updated_at timestamp with time zone DEFAULT now(),
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT site_settings_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.user_sessions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  user_type character varying DEFAULT 'student'::character varying CHECK (user_type::text = ANY (ARRAY['student'::character varying::text, 'teacher'::character varying::text, 'admin'::character varying::text])),
+  device_info text,
+  browser character varying,
+  os character varying,
+  ip_address inet,
+  user_agent text,
+  last_activity timestamp with time zone DEFAULT now(),
+  created_at timestamp with time zone DEFAULT now(),
+  expires_at timestamp with time zone DEFAULT (now() + '24:00:00'::interval),
+  CONSTRAINT user_sessions_pkey PRIMARY KEY (id)
+);
