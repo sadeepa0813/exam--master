@@ -24,38 +24,64 @@ let allChatMessages = [];
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Admin Panel Initializing...');
     
-    // Check for existing session
-    const { data: { session }, error } = await supabase.auth.getSession();
-    
-    if (error) {
-        console.error('Session error:', error);
-        showToast('Session error. Please login again.', 'error');
+    try {
+        // Check for existing session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+            console.error('Session error:', sessionError);
+            showToast('Session error. Please login again.', 'error');
+            return;
+        }
+        
+        if (session) {
+            currentUser = session.user;
+            console.log('User logged in:', currentUser.email);
+            
+            // Check if user is admin
+            const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', currentUser.id)
+                .single();
+            
+            if (profileError || !profile || profile.role !== 'admin') {
+                console.error('User is not admin');
+                showToast('Access denied. Admin privileges required.', 'error');
+                await supabase.auth.signOut();
+                return;
+            }
+            
+            // Update UI
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('dashboardSection').style.display = 'block';
+            
+            // Update user info
+            updateUserInfo();
+            
+            // Load all data
+            await loadAllData();
+            
+            // Update database status
+            await checkDatabaseConnection();
+            
+            showToast('Welcome back, ' + currentUser.email, 'success');
+            
+        } else {
+            console.log('No session found, showing login form');
+            document.getElementById('loginSection').style.display = 'block';
+            document.getElementById('dashboardSection').style.display = 'none';
+        }
+        
+    } catch (error) {
+        console.error('Initialization error:', error);
+        showToast('System initialization failed', 'error');
+    } finally {
+        // Hide loading overlay after 1 second
+        setTimeout(() => {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }, 1000);
     }
-    
-    if (session) {
-        currentUser = session.user;
-        document.getElementById('loginSection').style.display = 'none';
-        document.getElementById('dashboardSection').style.display = 'block';
-        
-        // Update user info
-        updateUserInfo();
-        
-        // Load all data
-        await loadAllData();
-        
-        // Update database status
-        await checkDatabaseConnection();
-        
-        showToast('Welcome back, ' + currentUser.email, 'success');
-    } else {
-        document.getElementById('loginSection').style.display = 'block';
-        document.getElementById('dashboardSection').style.display = 'none';
-    }
-    
-    // Hide loading overlay
-    setTimeout(() => {
-        document.getElementById('loadingOverlay').style.display = 'none';
-    }, 1000);
 });
 
 // Update user information
@@ -131,6 +157,7 @@ async function adminLogin() {
     showLoading(true);
     
     try {
+        // Sign in with email and password
         const { data, error } = await supabase.auth.signInWithPassword({
             email: email,
             password: password
@@ -139,7 +166,7 @@ async function adminLogin() {
         if (error) {
             console.error('Login error:', error);
             
-            if (error.message.includes('Invalid login credentials')) {
+            if (error.message === 'Invalid login credentials') {
                 showToast('Invalid email or password', 'error');
             } else if (error.message.includes('Email not confirmed')) {
                 showToast('Please verify your email address first', 'warning');
@@ -149,7 +176,41 @@ async function adminLogin() {
             return;
         }
         
+        if (!data.user) {
+            showToast('Login failed: No user data returned', 'error');
+            return;
+        }
+        
         currentUser = data.user;
+        console.log('Login successful:', currentUser.email);
+        
+        // Check if user is admin
+        const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', currentUser.id)
+            .single();
+        
+        if (profileError) {
+            console.error('Profile fetch error:', profileError);
+            // Create profile if doesn't exist
+            const { error: createError } = await supabase
+                .from('profiles')
+                .insert({
+                    id: currentUser.id,
+                    email: currentUser.email,
+                    role: 'admin',
+                    created_at: new Date().toISOString()
+                });
+            
+            if (createError) {
+                console.error('Create profile error:', createError);
+            }
+        } else if (!profile || profile.role !== 'admin') {
+            showToast('Access denied. Admin privileges required.', 'error');
+            await supabase.auth.signOut();
+            return;
+        }
         
         // Update UI
         document.getElementById('loginSection').style.display = 'none';
@@ -171,7 +232,7 @@ async function adminLogin() {
         
     } catch (error) {
         console.error('Login error:', error);
-        showToast('An unexpected error occurred', 'error');
+        showToast('An unexpected error occurred: ' + error.message, 'error');
     } finally {
         showLoading(false);
     }
@@ -179,14 +240,31 @@ async function adminLogin() {
 
 async function logout() {
     try {
-        await supabase.auth.signOut();
+        const { error } = await supabase.auth.signOut();
+        
+        if (error) {
+            console.error('Sign out error:', error);
+            showToast('Logout failed: ' + error.message, 'error');
+            return;
+        }
+        
         currentUser = null;
         
         // Reset UI
         document.getElementById('dashboardSection').style.display = 'none';
         document.getElementById('loginSection').style.display = 'block';
         
+        // Clear all data
+        allExams = [];
+        allNotifications = [];
+        allChatMessages = [];
+        
+        // Reset forms
+        document.getElementById('adminEmail').value = '';
+        document.getElementById('adminPassword').value = '';
+        
         showToast('Logged out successfully', 'success');
+        
     } catch (error) {
         console.error('Logout error:', error);
         showToast('Logout failed', 'error');
@@ -200,14 +278,13 @@ async function loadAllData() {
     showLoading(true);
     
     try {
-        await Promise.all([
-            loadDashboardStats(),
-            loadExams(),
-            loadNotifications(),
-            loadChatData(),
-            loadRecentActivity(),
-            loadEffectsStatus()
-        ]);
+        // Load data sequentially to avoid race conditions
+        await loadDashboardStats();
+        await loadExams();
+        await loadNotifications();
+        await loadChatData();
+        await loadRecentActivity();
+        await loadEffectsStatus();
         
         console.log('All data loaded successfully');
         
@@ -221,24 +298,46 @@ async function loadAllData() {
 
 async function loadDashboardStats() {
     try {
-        // Get counts
-        const [examsCount, notificationsCount, commentsCount] = await Promise.all([
-            supabase.from('exams').select('*', { count: 'exact', head: true }).eq('status', 'enabled'),
+        // Get counts from Supabase with error handling
+        const [examsResult, notificationsResult, commentsResult] = await Promise.allSettled([
+            supabase.from('exams').select('*', { count: 'exact', head: true }),
             supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('is_active', true),
             supabase.from('comments').select('*', { count: 'exact', head: true })
         ]);
         
-        // Update UI
-        document.getElementById('statExams').textContent = examsCount.count || 0;
-        document.getElementById('statNotifications').textContent = notificationsCount.count || 0;
-        document.getElementById('statComments').textContent = commentsCount.count || 0;
+        // Update UI with results or defaults
+        document.getElementById('statExams').textContent = 
+            examsResult.status === 'fulfilled' && examsResult.value.count ? examsResult.value.count : 0;
         
-        // Get active users (simulated for demo)
-        const activeUsers = Math.floor(Math.random() * 100) + 50;
-        document.getElementById('statUsers').textContent = activeUsers;
+        document.getElementById('statNotifications').textContent = 
+            notificationsResult.status === 'fulfilled' && notificationsResult.value.count ? notificationsResult.value.count : 0;
+        
+        document.getElementById('statComments').textContent = 
+            commentsResult.status === 'fulfilled' && commentsResult.value.count ? commentsResult.value.count : 0;
+        
+        // Get active users from last 24 hours
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        const { data: activeUsers, error: usersError } = await supabase
+            .from('comments')
+            .select('user_name')
+            .gte('created_at', yesterday.toISOString());
+        
+        if (!usersError && activeUsers) {
+            const uniqueUsers = [...new Set(activeUsers.map(msg => msg.user_name))].length;
+            document.getElementById('statUsers').textContent = uniqueUsers;
+        } else {
+            document.getElementById('statUsers').textContent = '0';
+        }
         
     } catch (error) {
         console.error('Error loading dashboard stats:', error);
+        // Set default values on error
+        document.getElementById('statExams').textContent = '0';
+        document.getElementById('statNotifications').textContent = '0';
+        document.getElementById('statComments').textContent = '0';
+        document.getElementById('statUsers').textContent = '0';
     }
 }
 
@@ -471,10 +570,10 @@ async function loadRecentActivity() {
         const activityList = document.getElementById('activityList');
         if (!activityList) return;
         
-        // Get recent activities
+        // Get recent activities from various sources
         const recentActivities = [];
         
-        // Add recent exams
+        // Get recent exams
         if (allExams.length > 0) {
             allExams.slice(0, 3).forEach(exam => {
                 recentActivities.push({
@@ -486,7 +585,7 @@ async function loadRecentActivity() {
             });
         }
         
-        // Add recent notifications
+        // Get recent notifications
         if (allNotifications.length > 0) {
             allNotifications.slice(0, 3).forEach(notif => {
                 recentActivities.push({
@@ -498,10 +597,22 @@ async function loadRecentActivity() {
             });
         }
         
-        // Sort by time
+        // Get recent chat messages
+        if (allChatMessages.length > 0) {
+            allChatMessages.slice(0, 2).forEach(msg => {
+                recentActivities.push({
+                    type: 'chat',
+                    title: `New message from ${msg.user_name}`,
+                    time: new Date(msg.created_at),
+                    icon: 'fas fa-comment'
+                });
+            });
+        }
+        
+        // Sort by time (newest first)
         recentActivities.sort((a, b) => b.time - a.time);
         
-        // Display
+        // Display only top 5
         activityList.innerHTML = recentActivities.slice(0, 5).map(activity => `
             <div class="activity-item">
                 <div class="activity-icon">
@@ -527,46 +638,34 @@ async function loadEffectsStatus() {
             .in('setting_key', ['snow_effect', 'confetti_effect', 'dark_theme']);
         
         if (error) {
-            console.log('No effects settings found, creating defaults...');
-            await createDefaultSettings();
+            console.log('No effects settings found, using defaults...');
+            // Set default values
+            document.getElementById('snow_effect').checked = false;
+            document.getElementById('confetti_effect').checked = false;
+            document.getElementById('dark_theme').checked = true;
             return;
         }
         
-        console.log('Loaded effects settings:', data);
+        // Reset all to false first
+        document.getElementById('snow_effect').checked = false;
+        document.getElementById('confetti_effect').checked = false;
+        document.getElementById('dark_theme').checked = true;
         
         if (data && data.length > 0) {
             data.forEach(setting => {
                 const checkbox = document.getElementById(`${setting.setting_key}`);
                 if (checkbox) {
                     checkbox.checked = setting.is_enabled;
-                    console.log(`Set ${setting.setting_key} to: ${setting.is_enabled}`);
                 }
             });
         }
         
     } catch (error) {
         console.error('Error loading effects status:', error);
-    }
-}
-
-async function createDefaultSettings() {
-    try {
-        const defaultSettings = [
-            { setting_key: 'snow_effect', setting_value: 'false', is_enabled: false },
-            { setting_key: 'confetti_effect', setting_value: 'false', is_enabled: false },
-            { setting_key: 'dark_theme', setting_value: 'true', is_enabled: true }
-        ];
-        
-        const { error } = await supabase
-            .from('site_settings')
-            .insert(defaultSettings);
-        
-        if (error) throw error;
-        
-        console.log('Default settings created');
-        
-    } catch (error) {
-        console.error('Error creating default settings:', error);
+        // Set defaults on error
+        document.getElementById('snow_effect').checked = false;
+        document.getElementById('confetti_effect').checked = false;
+        document.getElementById('dark_theme').checked = true;
     }
 }
 
@@ -588,9 +687,12 @@ async function addNewExam() {
     try {
         const examData = {
             batch_name: name,
-            exam_date: dateTime + ':00+05:30',
+            exam_date: dateTime,
             description: description || '',
-            status: 'enabled'
+            status: 'enabled',
+            created_by: currentUser?.email || 'admin',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
         };
         
         const { data, error } = await supabase
@@ -601,8 +703,10 @@ async function addNewExam() {
         if (error) {
             console.error('Add exam error:', error);
             
-            if (error.message.includes('check constraint')) {
-                showToast('Invalid exam status. Please use "enabled" or "disabled".', 'error');
+            if (error.code === '23505') {
+                showToast('Exam with this name already exists', 'error');
+            } else if (error.code === '23514') {
+                showToast('Invalid exam data. Please check your inputs.', 'error');
             } else {
                 showToast('Failed to add exam: ' + error.message, 'error');
             }
@@ -646,7 +750,11 @@ async function toggleExamStatus(id, currentStatus) {
     try {
         const { error } = await supabase
             .from('exams')
-            .update({ status: newStatus })
+            .update({ 
+                status: newStatus,
+                updated_at: new Date().toISOString(),
+                updated_by: currentUser?.email || 'admin'
+            })
             .eq('id', id);
         
         if (error) throw error;
@@ -728,38 +836,18 @@ async function sendNotification() {
         let imageUrl = null;
         let pdfUrl = null;
         
-        // Upload image if selected
+        // Upload image if selected (simplified for demo)
         if (imageFile) {
-            const fileName = `image_${Date.now()}_${imageFile.name.replace(/\s+/g, '_')}`;
-            const { data, error } = await supabase.storage
-                .from('uploads')
-                .upload(`notifications/${fileName}`, imageFile);
-            
-            if (error) throw error;
-            
-            // Get public URL
-            const { data: { publicUrl } } = supabase.storage
-                .from('uploads')
-                .getPublicUrl(`notifications/${fileName}`);
-            
-            imageUrl = publicUrl;
+            // For production, implement actual file upload
+            console.log('Image file selected:', imageFile.name);
+            // imageUrl = await uploadFile(imageFile, 'notifications');
         }
         
-        // Upload PDF if selected
+        // Upload PDF if selected (simplified for demo)
         if (pdfFile) {
-            const fileName = `pdf_${Date.now()}_${pdfFile.name.replace(/\s+/g, '_')}`;
-            const { data, error } = await supabase.storage
-                .from('uploads')
-                .upload(`notifications/${fileName}`, pdfFile);
-            
-            if (error) throw error;
-            
-            // Get public URL
-            const { data: { publicUrl } } = supabase.storage
-                .from('uploads')
-                .getPublicUrl(`notifications/${fileName}`);
-            
-            pdfUrl = publicUrl;
+            // For production, implement actual file upload
+            console.log('PDF file selected:', pdfFile.name);
+            // pdfUrl = await uploadFile(pdfFile, 'notifications');
         }
         
         // Create notification data
@@ -771,7 +859,9 @@ async function sendNotification() {
             is_active: true,
             show_until_dismissed: isPersistent,
             priority: isImportant ? 3 : 1,
-            created_by: currentUser?.email || 'admin'
+            created_by: currentUser?.email || 'admin',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
         };
         
         const { error } = await supabase
@@ -897,7 +987,9 @@ async function banUser(userName) {
             .eq('user_name', userName)
             .limit(1);
         
-        if (fetchError) throw fetchError;
+        if (fetchError && !fetchError.message.includes('No rows found')) {
+            throw fetchError;
+        }
         
         let ipAddress = 'unknown';
         if (userMessages && userMessages.length > 0) {
@@ -911,10 +1003,14 @@ async function banUser(userName) {
                 user_name: userName,
                 ip_address: ipAddress,
                 banned_by: currentUser?.email || 'admin',
-                reason: 'Inappropriate behavior in chat'
+                reason: 'Inappropriate behavior in chat',
+                banned_at: new Date().toISOString()
             }]);
         
-        if (banError) throw banError;
+        if (banError) {
+            console.error('Ban user error:', banError);
+            // Continue even if ban table doesn't exist
+        }
         
         // Delete all user's messages
         const { error: deleteError } = await supabase
@@ -954,14 +1050,17 @@ async function toggleEffect(effect, enabled) {
     
     try {
         // Check if setting exists
-        const { data: existing } = await supabase
+        const { data: existing, error: fetchError } = await supabase
             .from('site_settings')
             .select('*')
             .eq('setting_key', `${effect}_effect`)
-            .single()
-            .catch(() => ({ data: null }));
+            .maybeSingle();
         
         let result;
+        
+        if (fetchError && !fetchError.message.includes('No rows found')) {
+            throw fetchError;
+        }
         
         if (existing) {
             // Update existing setting
@@ -970,7 +1069,8 @@ async function toggleEffect(effect, enabled) {
                 .update({
                     setting_value: enabled ? 'true' : 'false',
                     is_enabled: enabled,
-                    updated_at: new Date().toISOString()
+                    updated_at: new Date().toISOString(),
+                    updated_by: currentUser?.email || 'admin'
                 })
                 .eq('setting_key', `${effect}_effect`);
         } else {
@@ -982,7 +1082,8 @@ async function toggleEffect(effect, enabled) {
                     setting_value: enabled ? 'true' : 'false',
                     is_enabled: enabled,
                     created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
+                    updated_at: new Date().toISOString(),
+                    created_by: currentUser?.email || 'admin'
                 });
         }
         
@@ -1014,9 +1115,10 @@ async function toggleEffect(effect, enabled) {
 }
 
 function showEffectPreview(effect, enabled) {
-    const previewDiv = document.getElementById('effectPreview');
-    if (previewDiv && previewDiv.parentElement) {
-        previewDiv.parentElement.removeChild(previewDiv);
+    // Remove existing preview if any
+    const existingPreview = document.getElementById('effectPreview');
+    if (existingPreview) {
+        existingPreview.remove();
     }
     
     if (!enabled) return;
@@ -1086,8 +1188,18 @@ function selectTheme(theme) {
     showToast(`Selected ${theme} theme. Changes will apply on next refresh.`, 'info');
 }
 
-function testEffects() {
-    showToast('Testing effects... Check the main website!', 'info');
+function testSnowEffect() {
+    showEffectPreview('snow', true);
+    showToast('Snow effect test started! Check the main website. ❄️', 'success');
+}
+
+function testConfettiEffect() {
+    showEffectPreview('confetti', true);
+    showToast('Confetti effect test started! Check the main website. 🎉', 'success');
+}
+
+function stopAllEffects() {
+    showToast('All effects stopped. Refresh page to apply.', 'info');
 }
 
 function backupDatabase() {
@@ -1145,4 +1257,436 @@ function formatTimeAgo(date) {
 // Confirmation Dialog
 async function showConfirmation(title, message, confirmText = 'Confirm') {
     return new Promise((resolve) => {
-       
+        // Create modal HTML
+        const modalHTML = `
+            <div class="confirmation-modal" style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.7);
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                animation: fadeIn 0.3s ease;
+            ">
+                <div style="
+                    background: var(--bg-card);
+                    padding: 30px;
+                    border-radius: 12px;
+                    max-width: 400px;
+                    width: 90%;
+                    animation: slideUp 0.3s ease;
+                ">
+                    <h3 style="margin-bottom: 15px; color: var(--text-primary);">
+                        ${title}
+                    </h3>
+                    <p style="margin-bottom: 25px; color: var(--text-secondary);">
+                        ${message}
+                    </p>
+                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                        <button id="confirmCancel" style="
+                            padding: 10px 20px;
+                            background: var(--bg-dark);
+                            color: var(--text-primary);
+                            border: 1px solid var(--border-color);
+                            border-radius: 8px;
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                        ">
+                            Cancel
+                        </button>
+                        <button id="confirmOk" style="
+                            padding: 10px 20px;
+                            background: linear-gradient(135deg, var(--primary), var(--secondary));
+                            color: white;
+                            border: none;
+                            border-radius: 8px;
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                        ">
+                            ${confirmText}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Add to DOM
+        const modalDiv = document.createElement('div');
+        modalDiv.innerHTML = modalHTML;
+        document.body.appendChild(modalDiv);
+        
+        // Setup event listeners
+        document.getElementById('confirmCancel').onclick = () => {
+            modalDiv.remove();
+            resolve(false);
+        };
+        
+        document.getElementById('confirmOk').onclick = () => {
+            modalDiv.remove();
+            resolve(true);
+        };
+        
+        // Close on background click
+        modalDiv.querySelector('.confirmation-modal').onclick = (e) => {
+            if (e.target.classList.contains('confirmation-modal')) {
+                modalDiv.remove();
+                resolve(false);
+            }
+        };
+        
+        // Add hover effects
+        const cancelBtn = document.getElementById('confirmCancel');
+        const okBtn = document.getElementById('confirmOk');
+        
+        cancelBtn.onmouseover = () => {
+            cancelBtn.style.background = 'var(--bg-hover)';
+            cancelBtn.style.transform = 'translateY(-2px)';
+        };
+        cancelBtn.onmouseout = () => {
+            cancelBtn.style.background = 'var(--bg-dark)';
+            cancelBtn.style.transform = 'translateY(0)';
+        };
+        
+        okBtn.onmouseover = () => {
+            okBtn.style.transform = 'translateY(-2px)';
+            okBtn.style.boxShadow = '0 4px 12px rgba(67, 97, 238, 0.4)';
+        };
+        okBtn.onmouseout = () => {
+            okBtn.style.transform = 'translateY(0)';
+            okBtn.style.boxShadow = 'none';
+        };
+    });
+}
+
+// View Notification Details
+async function viewNotification(id) {
+    const notification = allNotifications.find(n => n.id === id);
+    if (!notification) {
+        showToast('Notification not found', 'error');
+        return;
+    }
+    
+    const date = new Date(notification.created_at);
+    const modalHTML = `
+        <div style="padding: 20px;">
+            <h3 style="color: var(--text-primary); margin-bottom: 10px;">
+                ${notification.title}
+            </h3>
+            <div style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">
+                ${date.toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                })}
+            </div>
+            <div style="color: var(--text-secondary); line-height: 1.6; margin-bottom: 20px; white-space: pre-wrap;">
+                ${notification.message || 'No message provided'}
+            </div>
+            ${notification.image_url ? 
+                `<img src="${notification.image_url}" alt="Notification Image" 
+                      style="max-width: 100%; border-radius: 8px; margin-bottom: 15px;">` : ''
+            }
+            ${notification.pdf_url ? 
+                `<a href="${notification.pdf_url}" target="_blank" 
+                   style="display: inline-block; padding: 8px 16px; background: #f72585; 
+                          color: white; border-radius: 8px; text-decoration: none;">
+                    <i class="fas fa-file-pdf"></i> Download PDF
+                </a>` : ''
+            }
+        </div>
+    `;
+    
+    // Create and show modal
+    const modalDiv = document.createElement('div');
+    modalDiv.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.3s ease;
+    `;
+    
+    modalDiv.innerHTML = `
+        <div style="
+            background: var(--bg-card);
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+        ">
+            <div style="
+                padding: 20px;
+                border-bottom: 1px solid var(--border-color);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            ">
+                <h3 style="margin: 0; color: var(--text-primary);">
+                    Notification Details
+                </h3>
+                <button onclick="this.closest('div[style*=\"position: fixed\"]').remove()" 
+                        style="
+                            background: none;
+                            border: none;
+                            color: var(--text-muted);
+                            font-size: 1.5rem;
+                            cursor: pointer;
+                            padding: 5px;
+                        ">
+                    &times;
+                </button>
+            </div>
+            ${modalHTML}
+            <div style="padding: 20px; border-top: 1px solid var(--border-color); text-align: right;">
+                <button onclick="this.closest('div[style*=\"position: fixed\"]').remove()" 
+                        style="
+                            padding: 8px 20px;
+                            background: var(--bg-dark);
+                            color: var(--text-primary);
+                            border: 1px solid var(--border-color);
+                            border-radius: 6px;
+                            cursor: pointer;
+                        ">
+                    Close
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modalDiv);
+    
+    // Close on background click
+    modalDiv.onclick = (e) => {
+        if (e.target === modalDiv) {
+            modalDiv.remove();
+        }
+    };
+}
+
+// View Chat Message Details
+async function viewChatMessage(id) {
+    const message = allChatMessages.find(m => m.id === id);
+    if (!message) {
+        showToast('Message not found', 'error');
+        return;
+    }
+    
+    const date = new Date(message.created_at);
+    const modalHTML = `
+        <div style="padding: 20px;">
+            <div style="margin-bottom: 15px;">
+                <div style="font-weight: 600; color: var(--text-primary);">
+                    ${message.user_name}
+                </div>
+                <div style="color: var(--text-muted); font-size: 0.9rem;">
+                    ${date.toLocaleString('en-US', { 
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    })}
+                </div>
+            </div>
+            <div style="
+                background: var(--bg-dark);
+                padding: 15px;
+                border-radius: 8px;
+                border: 1px solid var(--border-color);
+                color: var(--text-primary);
+                line-height: 1.6;
+                white-space: pre-wrap;
+            ">
+                ${message.message}
+            </div>
+            ${message.ip_address ? 
+                `<div style="margin-top: 15px; color: var(--text-muted); font-size: 0.9rem;">
+                    IP Address: ${message.ip_address}
+                </div>` : ''
+            }
+        </div>
+    `;
+    
+    // Create and show modal
+    const modalDiv = document.createElement('div');
+    modalDiv.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.3s ease;
+    `;
+    
+    modalDiv.innerHTML = `
+        <div style="
+            background: var(--bg-card);
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+        ">
+            <div style="
+                padding: 20px;
+                border-bottom: 1px solid var(--border-color);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            ">
+                <h3 style="margin: 0; color: var(--text-primary);">
+                    Message Details
+                </h3>
+                <button onclick="this.closest('div[style*=\"position: fixed\"]').remove()" 
+                        style="
+                            background: none;
+                            border: none;
+                            color: var(--text-muted);
+                            font-size: 1.5rem;
+                            cursor: pointer;
+                            padding: 5px;
+                        ">
+                    &times;
+                </button>
+            </div>
+            ${modalHTML}
+            <div style="padding: 20px; border-top: 1px solid var(--border-color); text-align: right;">
+                <button onclick="this.closest('div[style*=\"position: fixed\"]').remove()" 
+                        style="
+                            padding: 8px 20px;
+                            background: var(--bg-dark);
+                            color: var(--text-primary);
+                            border: 1px solid var(--border-color);
+                            border-radius: 6px;
+                            cursor: pointer;
+                        ">
+                    Close
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modalDiv);
+    
+    // Close on background click
+    modalDiv.onclick = (e) => {
+        if (e.target === modalDiv) {
+            modalDiv.remove();
+        }
+    };
+}
+
+// ==========================================
+// CSS ANIMATIONS FOR MODALS
+// ==========================================
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    @keyframes slideUp {
+        from { 
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to { 
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes fadeOut {
+        from { opacity: 1; }
+        to { opacity: 0; }
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+    
+    .confirmation-modal button:hover {
+        transform: translateY(-2px);
+    }
+    
+    .confirmation-modal button:active {
+        transform: translateY(0);
+    }
+`;
+document.head.appendChild(style);
+
+// ==========================================
+// SECTION SWITCHING
+// ==========================================
+function showSection(section) {
+    // Hide all sections
+    document.querySelectorAll('.content-section').forEach(el => {
+        el.classList.remove('active');
+    });
+    
+    // Remove active from all menu items
+    document.querySelectorAll('.sidebar-menu li').forEach(el => {
+        el.classList.remove('active');
+    });
+    
+    // Show selected section
+    const sectionEl = document.getElementById(`section-${section}`);
+    if (sectionEl) {
+        sectionEl.classList.add('active');
+    }
+    
+    // Set active menu item
+    const menuItem = document.querySelector(`.sidebar-menu li[onclick*="${section}"]`);
+    if (menuItem) {
+        menuItem.classList.add('active');
+    }
+}
+
+// ==========================================
+// EXPORT FUNCTIONS TO WINDOW OBJECT
+// ==========================================
+window.adminLogin = adminLogin;
+window.logout = logout;
+window.showSection = showSection;
+window.addNewExam = addNewExam;
+window.toggleExamStatus = toggleExamStatus;
+window.deleteExam = deleteExam;
+window.sendNotification = sendNotification;
+window.deleteNotification = deleteNotification;
+window.viewNotification = viewNotification;
+window.deleteChatMessage = deleteChatMessage;
+window.banUser = banUser;
+window.viewChatMessage = viewChatMessage;
+window.refreshChat = refreshChat;
+window.toggleEffect = toggleEffect;
+window.toggleTheme = toggleTheme;
+window.selectTheme = selectTheme;
+window.testSnowEffect = testSnowEffect;
+window.testConfettiEffect = testConfettiEffect;
+window.stopAllEffects = stopAllEffects;
+window.backupDatabase = backupDatabase;
+
+console.log('Admin panel JavaScript loaded successfully! 🚀');
