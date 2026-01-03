@@ -1659,6 +1659,397 @@ function showSection(section) {
 }
 
 // ==========================================
+// IMAGE PREVIEW FUNCTIONS
+// ==========================================
+let selectedImageFile = null;
+
+function previewImage(event) {
+    const file = event.target.files[0];
+    const previewContainer = document.getElementById('imagePreviewContainer');
+    const preview = document.getElementById('imagePreview');
+    const fileName = document.getElementById('imageFileName');
+    const fileSize = document.getElementById('imageFileSize');
+    const dimensions = document.getElementById('imageDimensions');
+    
+    if (file) {
+        // Check file type
+        if (!file.type.startsWith('image/')) {
+            showToast('Please select an image file (JPEG, PNG, GIF, etc.)', 'error');
+            event.target.value = '';
+            return;
+        }
+        
+        // Check file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('Image size should be less than 5MB', 'error');
+            event.target.value = '';
+            return;
+        }
+        
+        selectedImageFile = file;
+        
+        // Format file size
+        const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+        const sizeInKB = (file.size / 1024).toFixed(0);
+        
+        // Create image object to get dimensions
+        const img = new Image();
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            
+            img.onload = function() {
+                dimensions.textContent = `${img.width} × ${img.height} pixels`;
+                
+                // Set badge color based on image type
+                const badge = document.getElementById('imageBadge');
+                if (file.type.includes('jpeg') || file.type.includes('jpg')) {
+                    badge.style.background = '#FF6B6B';
+                } else if (file.type.includes('png')) {
+                    badge.style.background = '#4ECDC4';
+                } else if (file.type.includes('gif')) {
+                    badge.style.background = '#FFD166';
+                } else {
+                    badge.style.background = var(--primary);
+                }
+                
+                // Update file info
+                fileName.textContent = file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name;
+                fileSize.textContent = sizeInMB > 1 ? `${sizeInMB} MB` : `${sizeInKB} KB`;
+                
+                // Show preview container
+                previewContainer.style.display = 'block';
+                
+                showToast('Image selected successfully', 'success');
+            };
+            
+            img.src = e.target.result;
+        };
+        
+        reader.readAsDataURL(file);
+    }
+}
+
+function removeImage() {
+    const imageInput = document.getElementById('notificationImage');
+    const previewContainer = document.getElementById('imagePreviewContainer');
+    const preview = document.getElementById('imagePreview');
+    
+    imageInput.value = '';
+    preview.src = '';
+    previewContainer.style.display = 'none';
+    selectedImageFile = null;
+    
+    showToast('Image removed', 'info');
+}
+
+function viewFullImage() {
+    if (!selectedImageFile) return;
+    
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        const modalHTML = `
+            <div class="full-image-modal" id="fullImageModal">
+                <button class="close-btn" onclick="closeFullImage()">&times;</button>
+                <img src="${e.target.result}" alt="Full Image Preview">
+                <div style="position: absolute; bottom: 20px; left: 0; right: 0; text-align: center; color: white; font-size: 0.9rem;">
+                    ${selectedImageFile.name} • ${(selectedImageFile.size / 1024).toFixed(0)}KB
+                </div>
+            </div>
+        `;
+        
+        const modalDiv = document.createElement('div');
+        modalDiv.innerHTML = modalHTML;
+        document.body.appendChild(modalDiv);
+        
+        // Close on ESC key
+        document.addEventListener('keydown', function closeOnEsc(e) {
+            if (e.key === 'Escape') {
+                closeFullImage();
+                document.removeEventListener('keydown', closeOnEsc);
+            }
+        });
+        
+        // Close on background click
+        modalDiv.querySelector('.full-image-modal').onclick = function(e) {
+            if (e.target === this) {
+                closeFullImage();
+            }
+        };
+    };
+    
+    reader.readAsDataURL(selectedImageFile);
+}
+
+function closeFullImage() {
+    const modal = document.getElementById('fullImageModal');
+    if (modal && modal.parentElement) {
+        modal.parentElement.remove();
+    }
+}
+
+// ==========================================
+// PDF PREVIEW FUNCTIONS
+// ==========================================
+let selectedPDFFile = null;
+
+function previewPDF(event) {
+    const file = event.target.files[0];
+    const previewContainer = document.getElementById('pdfPreviewContainer');
+    const fileName = document.getElementById('pdfFileName');
+    const fileSize = document.getElementById('pdfFileSize');
+    const pageCount = document.getElementById('pdfPageCount');
+    
+    if (!previewContainer) {
+        // Create PDF preview container if it doesn't exist
+        const pdfPreviewHTML = `
+            <div class="pdf-preview-container" id="pdfPreviewContainer" style="display: none; margin-top: 15px;">
+                <div style="background: var(--bg-dark); padding: 15px; border-radius: 10px; border: 1px solid var(--border-color);">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="position: relative;">
+                            <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #f72585, #e11575); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-file-pdf" style="font-size: 2rem; color: white;"></i>
+                            </div>
+                            <div style="position: absolute; top: -8px; right: -8px; background: #f72585; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px;">
+                                PDF
+                            </div>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                <strong id="pdfFileName" style="color: var(--text-primary); font-size: 0.9rem;"></strong>
+                                <span id="pdfFileSize" style="color: var(--text-muted); font-size: 0.8rem;"></span>
+                            </div>
+                            <div id="pdfPageCount" style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 8px;">
+                                <i class="fas fa-file-alt"></i> Pages: Estimating...
+                            </div>
+                            <div style="display: flex; gap: 10px;">
+                                <button type="button" onclick="removePDF()" style="padding: 5px 12px; background: var(--danger); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; gap: 5px;">
+                                    <i class="fas fa-trash"></i> Remove
+                                </button>
+                                <button type="button" onclick="viewPDFInfo()" style="padding: 5px 12px; background: #f72585; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; gap: 5px;">
+                                    <i class="fas fa-info-circle"></i> Details
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        const pdfUploadSection = document.querySelector('.form-group:has(#notificationPdf)');
+        if (pdfUploadSection) {
+            const div = document.createElement('div');
+            div.innerHTML = pdfPreviewHTML;
+            pdfUploadSection.appendChild(div);
+        }
+    }
+    
+    if (file) {
+        // Check file type
+        if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+            showToast('Please select a PDF file', 'error');
+            event.target.value = '';
+            return;
+        }
+        
+        // Check file size (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            showToast('PDF size should be less than 10MB', 'error');
+            event.target.value = '';
+            return;
+        }
+        
+        selectedPDFFile = file;
+        
+        // Format file size
+        const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+        const sizeInKB = (file.size / 1024).toFixed(0);
+        
+        // Update file info
+        const updatedFileName = document.getElementById('pdfFileName');
+        const updatedFileSize = document.getElementById('pdfFileSize');
+        const updatedPageCount = document.getElementById('pdfPageCount');
+        
+        if (updatedFileName) {
+            updatedFileName.textContent = file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name;
+        }
+        
+        if (updatedFileSize) {
+            updatedFileSize.textContent = sizeInMB > 1 ? `${sizeInMB} MB` : `${sizeInKB} KB`;
+        }
+        
+        if (updatedPageCount) {
+            // Try to estimate page count (this is approximate)
+            const estimatedPages = Math.max(1, Math.round(file.size / 50000)); // ~50KB per page
+            updatedPageCount.innerHTML = `<i class="fas fa-file-alt"></i> Pages: ${estimatedPages} (estimated)`;
+        }
+        
+        // Show preview container
+        const updatedPreviewContainer = document.getElementById('pdfPreviewContainer');
+        if (updatedPreviewContainer) {
+            updatedPreviewContainer.style.display = 'block';
+        }
+        
+        showToast('PDF selected successfully', 'success');
+    }
+}
+
+function removePDF() {
+    const pdfInput = document.getElementById('notificationPdf');
+    const previewContainer = document.getElementById('pdfPreviewContainer');
+    
+    if (pdfInput) pdfInput.value = '';
+    if (previewContainer) previewContainer.style.display = 'none';
+    selectedPDFFile = null;
+    
+    showToast('PDF removed', 'info');
+}
+
+function viewPDFInfo() {
+    if (!selectedPDFFile) return;
+    
+    const sizeInMB = (selectedPDFFile.size / (1024 * 1024)).toFixed(2);
+    const sizeInKB = (selectedPDFFile.size / 1024).toFixed(0);
+    const lastModified = new Date(selectedPDFFile.lastModified).toLocaleDateString();
+    
+    const modalHTML = `
+        <div class="full-image-modal" id="pdfInfoModal" style="background: rgba(0, 0, 0, 0.8);">
+            <button class="close-btn" onclick="closePDFInfo()">&times;</button>
+            <div style="background: var(--bg-card); padding: 30px; border-radius: 12px; max-width: 400px; width: 90%;">
+                <h3 style="color: var(--text-primary); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-file-pdf" style="color: #f72585;"></i> PDF Details
+                </h3>
+                <div style="color: var(--text-secondary);">
+                    <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color);">
+                        <div style="font-weight: 500; color: var(--text-primary); margin-bottom: 5px;">File Name</div>
+                        <div>${selectedPDFFile.name}</div>
+                    </div>
+                    <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color);">
+                        <div style="font-weight: 500; color: var(--text-primary); margin-bottom: 5px;">File Size</div>
+                        <div>${sizeInMB > 1 ? `${sizeInMB} MB` : `${sizeInKB} KB`} (${selectedPDFFile.size.toLocaleString()} bytes)</div>
+                    </div>
+                    <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color);">
+                        <div style="font-weight: 500; color: var(--text-primary); margin-bottom: 5px;">File Type</div>
+                        <div>${selectedPDFFile.type || 'application/pdf'}</div>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <div style="font-weight: 500; color: var(--text-primary); margin-bottom: 5px;">Last Modified</div>
+                        <div>${lastModified}</div>
+                    </div>
+                </div>
+                <div style="margin-top: 20px; text-align: center;">
+                    <button onclick="closePDFInfo()" style="padding: 8px 20px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    const modalDiv = document.createElement('div');
+    modalDiv.innerHTML = modalHTML;
+    document.body.appendChild(modalDiv);
+    
+    // Close on ESC key
+    document.addEventListener('keydown', function closeOnEsc(e) {
+        if (e.key === 'Escape') {
+            closePDFInfo();
+            document.removeEventListener('keydown', closeOnEsc);
+        }
+    });
+}
+
+function closePDFInfo() {
+    const modal = document.getElementById('pdfInfoModal');
+    if (modal && modal.parentElement) {
+        modal.parentElement.remove();
+    }
+}
+
+// ==========================================
+// UPDATED SEND NOTIFICATION WITH FILE VALIDATION
+// ==========================================
+async function sendNotification() {
+    const title = document.getElementById('notificationTitle')?.value.trim();
+    const message = document.getElementById('notificationMessage')?.value.trim();
+    const isImportant = document.getElementById('notificationImportant')?.checked;
+    const isPersistent = document.getElementById('notificationPersistent')?.checked;
+    
+    if (!title) {
+        showToast('Please enter a notification title', 'error');
+        return;
+    }
+    
+    showLoading(true);
+    
+    try {
+        // Create notification data
+        const notificationData = {
+            title: title,
+            message: message || '',
+            is_active: true,
+            show_until_dismissed: isPersistent,
+            priority: isImportant ? 3 : 1
+        };
+        
+        // If image is selected, add a note about it
+        if (selectedImageFile) {
+            notificationData.message += `\n\n[Image attached: ${selectedImageFile.name}]`;
+        }
+        
+        // If PDF is selected, add a note about it
+        if (selectedPDFFile) {
+            notificationData.message += `\n\n[PDF attached: ${selectedPDFFile.name}]`;
+        }
+        
+        console.log('Sending notification with data:', notificationData);
+        
+        const { error } = await supabase
+            .from('notifications')
+            .insert([notificationData]);
+        
+        if (error) throw error;
+        
+        showToast('Notification sent successfully!', 'success');
+        
+        // Clear form
+        document.getElementById('notificationTitle').value = '';
+        document.getElementById('notificationMessage').value = '';
+        document.getElementById('notificationImportant').checked = false;
+        document.getElementById('notificationPersistent').checked = false;
+        
+        // Clear file inputs and previews
+        removeImage();
+        removePDF();
+        
+        // Refresh data
+        await loadNotifications();
+        await loadDashboardStats();
+        await loadRecentActivity();
+        
+    } catch (error) {
+        console.error('Error sending notification:', error);
+        showToast('Failed to send notification: ' + error.message, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// ==========================================
+// WINDOW EXPORTS
+// ==========================================
+window.previewImage = previewImage;
+window.removeImage = removeImage;
+window.viewFullImage = viewFullImage;
+window.closeFullImage = closeFullImage;
+window.previewPDF = previewPDF;
+window.removePDF = removePDF;
+window.viewPDFInfo = viewPDFInfo;
+window.closePDFInfo = closePDFInfo;
+
+// ==========================================
 // EXPORT FUNCTIONS TO WINDOW OBJECT
 // ==========================================
 window.adminLogin = adminLogin;
@@ -1683,3 +2074,4 @@ window.stopAllEffects = stopAllEffects;
 window.backupDatabase = backupDatabase;
 
 console.log('Admin panel JavaScript loaded successfully! 🚀');
+
