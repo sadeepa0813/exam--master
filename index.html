@@ -102,7 +102,86 @@
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.1); }
         }
-    </style>
+    <!-- Inside head tag of index.html -->
+    /* Snow Effect Styles */
+    .snowflake {
+        position: fixed;
+        top: -10px;
+        color: white;
+        font-size: 1em;
+        pointer-events: none;
+        user-select: none;
+        z-index: 1000;
+        opacity: 0.8;
+        text-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
+    }
+
+    /* Confetti Effect Styles */
+    .confetti {
+        position: fixed;
+        width: 10px;
+        height: 10px;
+        pointer-events: none;
+        z-index: 1000;
+        opacity: 0.8;
+    }
+
+    /* Effects Toggle Button */
+    .effects-toggle {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        background: linear-gradient(135deg, #4361ee, #7209b7);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        box-shadow: 0 8px 25px rgba(67, 97, 238, 0.4);
+        z-index: 999;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .effects-toggle:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 30px rgba(67, 97, 238, 0.6);
+    }
+
+    /* Effects Status Badge */
+    .effects-status {
+        position: fixed;
+        bottom: 80px;
+        left: 20px;
+        background: rgba(30, 41, 59, 0.9);
+        color: #4cc9f0;
+        padding: 10px 15px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 500;
+        z-index: 999;
+        border: 1px solid #334155;
+        backdrop-filter: blur(10px);
+        display: none;
+        align-items: center;
+        gap: 8px;
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeOut {
+        from { opacity: 1; transform: translateY(0); }
+        to { opacity: 0; transform: translateY(10px); }
+    }
+</style>
 </head>
 <body>
     <!-- Effects Canvas -->
@@ -287,6 +366,356 @@
 
     <!-- Main JavaScript -->
     <script type="module" src="app.js"></script>
+
+    <!-- After app.js script tag in index.html -->
+<script>
+    // Effects System for Main Website
+    let currentEffect = null;
+    let effectInterval = null;
+    let isEffectsEnabled = false;
+
+    // Check effects status from database/settings
+    async function checkEffectsStatus() {
+        try {
+            // Check if we have an admin session to access site_settings
+            const { data: settings, error } = await supabase
+                .from('site_settings')
+                .select('*')
+                .in('setting_key', ['snow_effect', 'confetti_effect']);
+            
+            if (error) {
+                console.log('Could not load effects settings:', error.message);
+                return;
+            }
+            
+            if (settings && settings.length > 0) {
+                const snowEnabled = settings.find(s => s.setting_key === 'snow_effect' && s.is_enabled);
+                const confettiEnabled = settings.find(s => s.setting_key === 'confetti_effect' && s.is_enabled);
+                
+                // Check seasonal dates
+                const now = new Date();
+                const isDecember = now.getMonth() === 11; // December
+                const isNewYear = now.getMonth() === 0 && now.getDate() <= 7; // Early January
+                
+                if (snowEnabled && isDecember) {
+                    startSnowEffect();
+                    showEffectsStatus('Snow effect enabled ❄️');
+                } else if (confettiEnabled && isNewYear) {
+                    startConfettiEffect();
+                    showEffectsStatus('Confetti effect enabled 🎉');
+                } else if (snowEnabled) {
+                    startSnowEffect();
+                    showEffectsStatus('Snow effect enabled ❄️');
+                } else if (confettiEnabled) {
+                    startConfettiEffect();
+                    showEffectsStatus('Confetti effect enabled 🎉');
+                }
+            }
+        } catch (error) {
+            console.error('Error checking effects status:', error);
+        }
+    }
+
+    // Show effects status notification
+    function showEffectsStatus(message) {
+        const statusDiv = document.getElementById('effectsStatus');
+        if (statusDiv) {
+            statusDiv.innerHTML = `<i class="fas fa-magic"></i> ${message}`;
+            statusDiv.style.display = 'flex';
+            
+            // Auto hide after 5 seconds
+            setTimeout(() => {
+                statusDiv.style.animation = 'fadeOut 0.3s ease';
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                    statusDiv.style.animation = '';
+                }, 300);
+            }, 5000);
+        }
+    }
+
+    // Create effects toggle button
+    function createEffectsToggle() {
+        if (document.getElementById('effectsToggle')) return;
+        
+        const toggleBtn = document.createElement('button');
+        toggleBtn.id = 'effectsToggle';
+        toggleBtn.className = 'effects-toggle';
+        toggleBtn.innerHTML = '<i class="fas fa-magic"></i> Effects';
+        toggleBtn.onclick = toggleEffectsMenu;
+        
+        const statusDiv = document.createElement('div');
+        statusDiv.id = 'effectsStatus';
+        statusDiv.className = 'effects-status';
+        
+        document.body.appendChild(toggleBtn);
+        document.body.appendChild(statusDiv);
+    }
+
+    // Toggle effects menu
+    function toggleEffectsMenu() {
+        const menuHTML = `
+            <div style="
+                position: fixed;
+                bottom: 80px;
+                left: 20px;
+                background: rgba(30, 41, 59, 0.95);
+                backdrop-filter: blur(10px);
+                border-radius: 12px;
+                padding: 20px;
+                z-index: 999;
+                min-width: 250px;
+                border: 1px solid #334155;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+                animation: fadeIn 0.3s ease;
+            ">
+                <h4 style="margin: 0 0 15px 0; color: #f8fafc;">
+                    <i class="fas fa-magic"></i> Site Effects
+                </h4>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button onclick="startSnowEffect()" style="
+                        padding: 10px 15px;
+                        background: rgba(76, 201, 240, 0.2);
+                        border: 1px solid rgba(76, 201, 240, 0.4);
+                        color: #4cc9f0;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        text-align: left;
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                    ">
+                        <i class="fas fa-snowflake"></i> Start Snow Effect
+                    </button>
+                    <button onclick="startConfettiEffect()" style="
+                        padding: 10px 15px;
+                        background: rgba(247, 37, 133, 0.2);
+                        border: 1px solid rgba(247, 37, 133, 0.4);
+                        color: #f72585;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        text-align: left;
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                    ">
+                        <i class="fas fa-fireworks"></i> Start Confetti Effect
+                    </button>
+                    <button onclick="stopAllEffects()" style="
+                        padding: 10px 15px;
+                        background: rgba(248, 150, 30, 0.2);
+                        border: 1px solid rgba(248, 150, 30, 0.4);
+                        color: #f8961e;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        text-align: left;
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                    ">
+                        <i class="fas fa-stop"></i> Stop All Effects
+                    </button>
+                </div>
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #334155;">
+                    <small style="color: #94a3b8; font-size: 0.8rem;">
+                        Effects controlled by admin panel
+                    </small>
+                </div>
+            </div>
+        `;
+        
+        // Remove existing menu if any
+        const existingMenu = document.getElementById('effectsMenu');
+        if (existingMenu) {
+            existingMenu.remove();
+            return;
+        }
+        
+        const menuDiv = document.createElement('div');
+        menuDiv.id = 'effectsMenu';
+        menuDiv.innerHTML = menuHTML;
+        document.body.appendChild(menuDiv);
+        
+        // Close menu when clicking outside
+        setTimeout(() => {
+            document.addEventListener('click', function closeMenu(e) {
+                if (!menuDiv.contains(e.target) && e.target.id !== 'effectsToggle') {
+                    menuDiv.remove();
+                    document.removeEventListener('click', closeMenu);
+                }
+            });
+        }, 100);
+    }
+
+    // Start Snow Effect
+    function startSnowEffect() {
+        stopAllEffects();
+        currentEffect = 'snow';
+        
+        // Create snowflakes
+        for (let i = 0; i < 50; i++) {
+            createSnowflake();
+        }
+        
+        // Create more snowflakes periodically
+        effectInterval = setInterval(createSnowflake, 300);
+        
+        showEffectsStatus('Snow effect started ❄️');
+        console.log('Snow effect started');
+    }
+
+    function createSnowflake() {
+        const snowflake = document.createElement('div');
+        snowflake.className = 'snowflake';
+        snowflake.innerHTML = '❄';
+        snowflake.style.left = Math.random() * 100 + 'vw';
+        snowflake.style.fontSize = Math.random() * 20 + 10 + 'px';
+        snowflake.style.opacity = Math.random() * 0.6 + 0.3;
+        snowflake.style.animationDuration = Math.random() * 3 + 5 + 's';
+        snowflake.style.animationDelay = Math.random() * 5 + 's';
+        
+        // Add animation
+        snowflake.style.animation = `fall linear infinite`;
+        
+        // Add keyframes for fall animation
+        if (!document.getElementById('snow-keyframes')) {
+            const style = document.createElement('style');
+            style.id = 'snow-keyframes';
+            style.textContent = `
+                @keyframes fall {
+                    to {
+                        transform: translateY(100vh) rotate(360deg);
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(snowflake);
+        
+        // Remove snowflake after animation
+        setTimeout(() => {
+            if (snowflake.parentElement) {
+                snowflake.remove();
+            }
+        }, 8000);
+    }
+
+    // Start Confetti Effect
+    function startConfettiEffect() {
+        stopAllEffects();
+        currentEffect = 'confetti';
+        
+        // Create confetti
+        for (let i = 0; i < 100; i++) {
+            createConfettiPiece();
+        }
+        
+        // Create more confetti periodically
+        effectInterval = setInterval(createConfettiPiece, 200);
+        
+        showEffectsStatus('Confetti effect started 🎉');
+        console.log('Confetti effect started');
+    }
+
+    function createConfettiPiece() {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        
+        // Random color
+        const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#FF9FF3', '#54A0FF', '#00D2D3'];
+        confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        
+        // Random position and size
+        confetti.style.left = Math.random() * 100 + 'vw';
+        confetti.style.top = '-10px';
+        confetti.style.width = Math.random() * 15 + 5 + 'px';
+        confetti.style.height = Math.random() * 15 + 5 + 'px';
+        confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+        
+        // Add animation
+        confetti.style.animation = `confettiFall linear forwards`;
+        confetti.style.animationDuration = Math.random() * 3 + 2 + 's';
+        confetti.style.animationDelay = Math.random() * 1 + 's';
+        
+        // Add keyframes for confetti fall
+        if (!document.getElementById('confetti-keyframes')) {
+            const style = document.createElement('style');
+            style.id = 'confetti-keyframes';
+            style.textContent = `
+                @keyframes confettiFall {
+                    0% {
+                        transform: translateY(0) rotate(0deg);
+                        opacity: 1;
+                    }
+                    100% {
+                        transform: translateY(100vh) rotate(360deg) translateX(${Math.random() * 200 - 100}px);
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(confetti);
+        
+        // Remove confetti after animation
+        setTimeout(() => {
+            if (confetti.parentElement) {
+                confetti.remove();
+            }
+        }, 5000);
+    }
+
+    // Stop All Effects
+    function stopAllEffects() {
+        if (effectInterval) {
+            clearInterval(effectInterval);
+            effectInterval = null;
+        }
+        
+        currentEffect = null;
+        
+        // Remove all effect elements
+        document.querySelectorAll('.snowflake, .confetti').forEach(el => {
+            if (el.parentElement) {
+                el.remove();
+            }
+        });
+        
+        // Remove keyframes
+        const snowKeyframes = document.getElementById('snow-keyframes');
+        const confettiKeyframes = document.getElementById('confetti-keyframes');
+        if (snowKeyframes) snowKeyframes.remove();
+        if (confettiKeyframes) confettiKeyframes.remove();
+        
+        console.log('All effects stopped');
+    }
+
+    // Initialize effects when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        // Wait for app.js to load and initialize
+        setTimeout(() => {
+            createEffectsToggle();
+            
+            // Check effects status after 3 seconds
+            setTimeout(() => {
+                if (window.supabase) {
+                    checkEffectsStatus();
+                } else {
+                    console.log('Supabase not available for effects');
+                }
+            }, 3000);
+        }, 2000);
+    });
+
+    // Make functions available globally
+    window.startSnowEffect = startSnowEffect;
+    window.startConfettiEffect = startConfettiEffect;
+    window.stopAllEffects = stopAllEffects;
+    window.toggleEffectsMenu = toggleEffectsMenu;
+</script>
     
     <!-- PWA Installation & Time Update -->
     <script>
@@ -369,3 +798,4 @@
     </script>
 </body>
 </html>
+
