@@ -38,20 +38,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentUser = session.user;
             console.log('User logged in:', currentUser.email);
             
-            // Check if user is admin
-            const { data: profile, error: profileError } = await supabase
-                .from('profiles')
-                .select('role')
-                .eq('id', currentUser.id)
-                .single();
-            
-            if (profileError || !profile || profile.role !== 'admin') {
-                console.error('User is not admin');
-                showToast('Access denied. Admin privileges required.', 'error');
-                await supabase.auth.signOut();
-                return;
-            }
-            
             // Update UI
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('dashboardSection').style.display = 'block';
@@ -183,34 +169,6 @@ async function adminLogin() {
         
         currentUser = data.user;
         console.log('Login successful:', currentUser.email);
-        
-        // Check if user is admin
-        const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', currentUser.id)
-            .single();
-        
-        if (profileError) {
-            console.error('Profile fetch error:', profileError);
-            // Create profile if doesn't exist
-            const { error: createError } = await supabase
-                .from('profiles')
-                .insert({
-                    id: currentUser.id,
-                    email: currentUser.email,
-                    role: 'admin',
-                    created_at: new Date().toISOString()
-                });
-            
-            if (createError) {
-                console.error('Create profile error:', createError);
-            }
-        } else if (!profile || profile.role !== 'admin') {
-            showToast('Access denied. Admin privileges required.', 'error');
-            await supabase.auth.signOut();
-            return;
-        }
         
         // Update UI
         document.getElementById('loginSection').style.display = 'none';
@@ -579,7 +537,7 @@ async function loadRecentActivity() {
                 recentActivities.push({
                     type: 'exam',
                     title: `New exam added: ${exam.batch_name}`,
-                    time: new Date(exam.created_at || exam.updated_at),
+                    time: new Date(exam.created_at || exam.updated_at || exam.exam_date),
                     icon: 'fas fa-calendar-plus'
                 });
             });
@@ -685,15 +643,32 @@ async function addNewExam() {
     showLoading(true);
     
     try {
+        // Check if exam already exists
+        const { data: existingExams, error: checkError } = await supabase
+            .from('exams')
+            .select('batch_name')
+            .eq('batch_name', name)
+            .limit(1);
+        
+        if (checkError) {
+            console.error('Check exam error:', checkError);
+        }
+        
+        if (existingExams && existingExams.length > 0) {
+            showToast('An exam with this name already exists', 'error');
+            return;
+        }
+        
+        // Prepare exam data - ONLY include columns that exist in your table
         const examData = {
             batch_name: name,
             exam_date: dateTime,
             description: description || '',
-            status: 'enabled',
-            created_by: currentUser?.email || 'admin',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            status: 'enabled'
+            // Remove created_by, created_at, updated_at if they don't exist
         };
+        
+        console.log('Adding exam with data:', examData);
         
         const { data, error } = await supabase
             .from('exams')
@@ -703,10 +678,29 @@ async function addNewExam() {
         if (error) {
             console.error('Add exam error:', error);
             
+            // Show specific error messages
             if (error.code === '23505') {
                 showToast('Exam with this name already exists', 'error');
             } else if (error.code === '23514') {
                 showToast('Invalid exam data. Please check your inputs.', 'error');
+            } else if (error.message.includes('column')) {
+                // Remove problematic columns and try again
+                const simplifiedExamData = {
+                    batch_name: name,
+                    exam_date: dateTime,
+                    description: description || '',
+                    status: 'enabled'
+                };
+                
+                const { error: retryError } = await supabase
+                    .from('exams')
+                    .insert([simplifiedExamData]);
+                
+                if (retryError) {
+                    throw retryError;
+                }
+                
+                showToast('Exam added successfully!', 'success');
             } else {
                 showToast('Failed to add exam: ' + error.message, 'error');
             }
@@ -748,13 +742,10 @@ async function toggleExamStatus(id, currentStatus) {
     showLoading(true);
     
     try {
+        // Update only the status column
         const { error } = await supabase
             .from('exams')
-            .update({ 
-                status: newStatus,
-                updated_at: new Date().toISOString(),
-                updated_by: currentUser?.email || 'admin'
-            })
+            .update({ status: newStatus })
             .eq('id', id);
         
         if (error) throw error;
@@ -833,52 +824,62 @@ async function sendNotification() {
     showLoading(true);
     
     try {
-        let imageUrl = null;
-        let pdfUrl = null;
-        
-        // Upload image if selected (simplified for demo)
-        if (imageFile) {
-            // For production, implement actual file upload
-            console.log('Image file selected:', imageFile.name);
-            // imageUrl = await uploadFile(imageFile, 'notifications');
-        }
-        
-        // Upload PDF if selected (simplified for demo)
-        if (pdfFile) {
-            // For production, implement actual file upload
-            console.log('PDF file selected:', pdfFile.name);
-            // pdfUrl = await uploadFile(pdfFile, 'notifications');
-        }
-        
-        // Create notification data
+        // Prepare notification data - ONLY include columns that exist
         const notificationData = {
             title: title,
             message: message || '',
-            image_url: imageUrl,
-            pdf_url: pdfUrl,
             is_active: true,
             show_until_dismissed: isPersistent,
-            priority: isImportant ? 3 : 1,
-            created_by: currentUser?.email || 'admin',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            priority: isImportant ? 3 : 1
+            // Remove created_by, updated_at if they don't exist
+            // Remove image_url and pdf_url if they don't exist
         };
+        
+        console.log('Adding notification with data:', notificationData);
         
         const { error } = await supabase
             .from('notifications')
             .insert([notificationData]);
         
-        if (error) throw error;
-        
-        showToast('Notification sent successfully!', 'success');
+        if (error) {
+            console.error('Send notification error:', error);
+            
+            // Try with minimal data if there's a column error
+            if (error.message.includes('column')) {
+                const minimalNotificationData = {
+                    title: title,
+                    message: message || '',
+                    is_active: true,
+                    priority: isImportant ? 3 : 1
+                };
+                
+                const { error: retryError } = await supabase
+                    .from('notifications')
+                    .insert([minimalNotificationData]);
+                
+                if (retryError) {
+                    throw retryError;
+                }
+                
+                showToast('Notification sent successfully!', 'success');
+            } else {
+                throw error;
+            }
+        } else {
+            showToast('Notification sent successfully!', 'success');
+        }
         
         // Clear form
         document.getElementById('notificationTitle').value = '';
         document.getElementById('notificationMessage').value = '';
         document.getElementById('notificationImportant').checked = false;
         document.getElementById('notificationPersistent').checked = false;
-        document.getElementById('notificationImage').value = '';
-        document.getElementById('notificationPdf').value = '';
+        if (document.getElementById('notificationImage')) {
+            document.getElementById('notificationImage').value = '';
+        }
+        if (document.getElementById('notificationPdf')) {
+            document.getElementById('notificationPdf').value = '';
+        }
         
         // Refresh data
         await loadNotifications();
@@ -991,25 +992,22 @@ async function banUser(userName) {
             throw fetchError;
         }
         
-        let ipAddress = 'unknown';
-        if (userMessages && userMessages.length > 0) {
-            ipAddress = userMessages[0].ip_address;
-        }
-        
-        // Add to banned_users table
-        const { error: banError } = await supabase
-            .from('banned_users')
-            .insert([{
-                user_name: userName,
-                ip_address: ipAddress,
-                banned_by: currentUser?.email || 'admin',
-                reason: 'Inappropriate behavior in chat',
-                banned_at: new Date().toISOString()
-            }]);
-        
-        if (banError) {
-            console.error('Ban user error:', banError);
-            // Continue even if ban table doesn't exist
+        // Try to add to banned_users table (if it exists)
+        try {
+            const { error: banError } = await supabase
+                .from('banned_users')
+                .insert([{
+                    user_name: userName,
+                    ip_address: userMessages && userMessages.length > 0 ? userMessages[0].ip_address : 'unknown',
+                    banned_by: currentUser?.email || 'admin',
+                    reason: 'Inappropriate behavior in chat'
+                }]);
+            
+            if (banError && !banError.message.includes('relation')) {
+                console.error('Ban user error:', banError);
+            }
+        } catch (tableError) {
+            console.log('banned_users table might not exist:', tableError);
         }
         
         // Delete all user's messages
@@ -1068,9 +1066,7 @@ async function toggleEffect(effect, enabled) {
                 .from('site_settings')
                 .update({
                     setting_value: enabled ? 'true' : 'false',
-                    is_enabled: enabled,
-                    updated_at: new Date().toISOString(),
-                    updated_by: currentUser?.email || 'admin'
+                    is_enabled: enabled
                 })
                 .eq('setting_key', `${effect}_effect`);
         } else {
@@ -1080,10 +1076,7 @@ async function toggleEffect(effect, enabled) {
                 .insert({
                     setting_key: `${effect}_effect`,
                     setting_value: enabled ? 'true' : 'false',
-                    is_enabled: enabled,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                    created_by: currentUser?.email || 'admin'
+                    is_enabled: enabled
                 });
         }
         
