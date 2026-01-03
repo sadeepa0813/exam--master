@@ -1,1246 +1,910 @@
-/* ==========================================
-   EXAM MASTER SL - MAIN WEBSITE STYLES
-   Professional & Modern Design
-   ========================================== */
-
-:root {
-    /* Color Palette */
-    --primary: #4361ee;
-    --primary-dark: #3a56d4;
-    --primary-light: #4895ef;
-    --secondary: #7209b7;
-    --success: #4cc9f0;
-    --danger: #f72585;
-    --warning: #f8961e;
-    --info: #2a9d8f;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Master SL - Student Dashboard</title>
     
-    /* Background Colors */
-    --bg-dark: #0f172a;
-    --bg-card: #1e293b;
-    --bg-hover: #2d3748;
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
-    /* Text Colors */
-    --text-primary: #f8fafc;
-    --text-secondary: #cbd5e1;
-    --text-muted: #94a3b8;
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    /* Borders & Shadows */
-    --border-color: #334155;
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    <!-- CSS -->
+    <link rel="stylesheet" href="style.css">
     
-    /* Transitions */
-    --transition-fast: all 0.15s ease;
-    --transition-normal: all 0.3s ease;
-    --transition-slow: all 0.5s ease;
-}
-
-/* Reset & Base Styles */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: var(--bg-dark);
-    color: var(--text-primary);
-    line-height: 1.6;
-    min-height: 100vh;
-    overflow-x: hidden;
-}
-
-/* Scrollbar Styling */
-::-webkit-scrollbar {
-    width: 10px;
-}
-
-::-webkit-scrollbar-track {
-    background: var(--bg-card);
-}
-
-::-webkit-scrollbar-thumb {
-    background: var(--primary);
-    border-radius: 5px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: var(--primary-dark);
-}
-
-/* Effects Canvas */
-#effectCanvas {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 1;
-}
-
-/* Main Header */
-.main-header {
-    background: var(--bg-card);
-    border-bottom: 1px solid var(--border-color);
-    padding: 20px 0;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    backdrop-filter: blur(10px);
-}
-
-.header-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 20px;
-}
-
-.logo-section {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-
-.logo {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.logo i {
-    font-size: 2.5rem;
-    color: var(--primary);
-}
-
-.logo h1 {
-    font-size: 1.8rem;
-    font-weight: 800;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-.subtitle {
-    color: var(--text-muted);
-    font-size: 0.9rem;
-    font-weight: 400;
-}
-
-.header-controls {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
-
-.notification-icon {
-    position: relative;
-    width: 45px;
-    height: 45px;
-    background: var(--bg-dark);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: var(--transition-normal);
-    border: 1px solid var(--border-color);
-}
-
-.notification-icon:hover {
-    background: var(--primary);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
-}
-
-.notification-icon i {
-    font-size: 1.2rem;
-    color: var(--text-primary);
-}
-
-.time-display {
-    background: var(--bg-dark);
-    padding: 10px 18px;
-    border-radius: 10px;
-    border: 1px solid var(--border-color);
-    text-align: center;
-    min-width: 180px;
-}
-
-.date {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    margin-bottom: 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.time {
-    font-size: 1.3rem;
-    font-weight: 700;
-    color: var(--text-primary);
-}
-
-.admin-link {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: var(--bg-dark);
-    color: var(--text-primary);
-    text-decoration: none;
-    padding: 10px 18px;
-    border-radius: 10px;
-    font-weight: 500;
-    transition: var(--transition-normal);
-    border: 1px solid var(--border-color);
-}
-
-.admin-link:hover {
-    background: var(--primary);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
-}
-
-.admin-link i {
-    font-size: 1.1rem;
-}
-
-/* Main Content */
-.main-content {
-    max-width: 1200px;
-    margin: 40px auto;
-    padding: 0 20px;
-}
-
-/* Section Styling */
-.dashboard-section {
-    margin-bottom: 50px;
-}
-
-.section-header {
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.section-header h2 {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 1.8rem;
-    font-weight: 700;
-    margin-bottom: 8px;
-    color: var(--text-primary);
-}
-
-.section-header h2 i {
-    color: var(--primary);
-}
-
-.section-header p {
-    color: var(--text-muted);
-    font-size: 1rem;
-}
-
-/* Countdown Grid */
-.countdown-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 25px;
-}
-
-.exam-card {
-    background: var(--bg-card);
-    border-radius: 16px;
-    padding: 25px;
-    border: 1px solid var(--border-color);
-    transition: var(--transition-normal);
-    position: relative;
-    overflow: hidden;
-}
-
-.exam-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 4px;
-    background: linear-gradient(90deg, var(--primary), var(--secondary));
-}
-
-.exam-card:hover {
-    transform: translateY(-5px);
-    box-shadow: var(--shadow-xl);
-    border-color: var(--primary);
-}
-
-.exam-card-content h3 {
-    font-size: 1.4rem;
-    font-weight: 600;
-    margin-bottom: 10px;
-    color: var(--text-primary);
-}
-
-.exam-date {
-    color: var(--text-muted);
-    font-size: 0.95rem;
-    margin-bottom: 25px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.exam-date i {
-    color: var(--primary);
-}
-
-/* Timer Display */
-.timer-display {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-}
-
-.time-unit {
-    flex: 1;
-    text-align: center;
-    padding: 15px 10px;
-    background: var(--bg-dark);
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-}
-
-.time-value {
-    font-size: 2rem;
-    font-weight: 800;
-    color: var(--primary);
-    display: block;
-    margin-bottom: 5px;
-    font-family: 'Inter', sans-serif;
-}
-
-.time-label {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-/* Skeleton Loading */
-.exam-card.loading {
-    animation: pulse 1.5s infinite;
-}
-
-.skeleton-line {
-    background: linear-gradient(90deg, 
-        var(--border-color) 25%, 
-        var(--bg-hover) 50%, 
-        var(--border-color) 75%);
-    border-radius: 4px;
-    background-size: 200% 100%;
-    animation: loading 1.5s infinite;
-}
-
-.timer-skeleton {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-}
-
-.skeleton-circle {
-    flex: 1;
-    height: 70px;
-    background: linear-gradient(90deg, 
-        var(--border-color) 25%, 
-        var(--bg-hover) 50%, 
-        var(--border-color) 75%);
-    border-radius: 12px;
-    background-size: 200% 100%;
-    animation: loading 1.5s infinite;
-}
-
-@keyframes loading {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
-}
-
-/* Chat Section */
-.chat-section {
-    margin-bottom: 60px;
-}
-
-.chat-container {
-    background: var(--bg-card);
-    border-radius: 16px;
-    border: 1px solid var(--border-color);
-    overflow: hidden;
-}
-
-.chat-box {
-    height: 400px;
-    overflow-y: auto;
-    padding: 25px;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.chat-welcome {
-    text-align: center;
-    padding: 40px 20px;
-    color: var(--text-muted);
-}
-
-.welcome-icon {
-    font-size: 3rem;
-    color: var(--primary);
-    opacity: 0.5;
-    margin-bottom: 15px;
-}
-
-.chat-welcome h3 {
-    font-size: 1.5rem;
-    margin-bottom: 10px;
-    color: var(--text-primary);
-}
-
-.chat-welcome p {
-    font-size: 1rem;
-    max-width: 400px;
-    margin: 0 auto;
-}
-
-/* Chat Messages */
-.chat-message {
-    max-width: 80%;
-    padding: 15px 20px;
-    border-radius: 18px;
-    position: relative;
-    animation: slideIn 0.3s ease;
-}
-
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.chat-message.user {
-    align-self: flex-end;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
-    color: white;
-    border-bottom-right-radius: 5px;
-}
-
-.chat-message.other {
-    align-self: flex-start;
-    background: var(--bg-hover);
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    border-bottom-left-radius: 5px;
-}
-
-.message-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
-.message-sender {
-    font-weight: 600;
-    font-size: 0.95rem;
-}
-
-.message-time {
-    font-size: 0.8rem;
-    opacity: 0.8;
-}
-
-.message-content {
-    line-height: 1.5;
-    word-wrap: break-word;
-}
-
-/* Chat Controls */
-.chat-controls {
-    padding: 20px;
-    border-top: 1px solid var(--border-color);
-    display: flex;
-    gap: 15px;
-    align-items: center;
-    background: var(--bg-dark);
-}
-
-.input-group {
-    flex: 1;
-}
-
-.chat-input {
-    width: 100%;
-    padding: 14px 20px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    color: var(--text-primary);
-    font-size: 1rem;
-    transition: var(--transition-normal);
-}
-
-.chat-input:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
-    background: var(--bg-hover);
-}
-
-.message-input {
-    flex: 3;
-    position: relative;
-}
-
-.send-btn {
-    position: absolute;
-    right: 5px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
-    border: none;
-    color: white;
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: var(--transition-normal);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.send-btn:hover {
-    transform: translateY(-50%) scale(1.1);
-    box-shadow: 0 8px 20px rgba(67, 97, 238, 0.4);
-}
-
-.chat-info {
-    padding: 15px 20px;
-    background: var(--bg-dark);
-    border-top: 1px solid var(--border-color);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: var(--text-muted);
-    font-size: 0.9rem;
-}
-
-.chat-info i {
-    color: var(--primary);
-}
-
-/* Modal Styling */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(5px);
-    z-index: 1000;
-    display: none;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
-    animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-.modal-content {
-    width: 90%;
-    max-width: 500px;
-    max-height: 80vh;
-    overflow-y: auto;
-    background: var(--bg-card);
-    border-radius: 20px;
-    border: 1px solid var(--primary);
-    box-shadow: var(--shadow-xl);
-    animation: slideUp 0.3s ease;
-}
-
-@keyframes slideUp {
-    from { transform: translateY(20px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-}
-
-.modal-header {
-    padding: 20px;
-    background: rgba(67, 97, 238, 0.1);
-    border-bottom: 1px solid var(--border-color);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-radius: 20px 20px 0 0;
-}
-
-.modal-header h3 {
-    font-size: 1.3rem;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.modal-header h3 i {
-    color: var(--primary);
-}
-
-.modal-close {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    font-size: 2rem;
-    cursor: pointer;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: var(--transition-normal);
-}
-
-.modal-close:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
-}
-
-.modal-body {
-    padding: 25px;
-}
-
-/* Notification Items */
-.notification-item {
-    padding: 20px;
-    margin-bottom: 20px;
-    background: var(--bg-dark);
-    border-radius: 15px;
-    border: 1px solid var(--border-color);
-    animation: slideIn 0.3s ease;
-}
-
-.notification-item:last-child {
-    margin-bottom: 0;
-}
-
-.notification-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 15px;
-}
-
-.notification-title {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    flex: 1;
-}
-
-.notification-date {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    white-space: nowrap;
-    margin-left: 15px;
-}
-
-.notification-message {
-    color: var(--text-primary);
-    line-height: 1.6;
-    margin-bottom: 15px;
-    white-space: pre-wrap;
-}
-
-.notification-media {
-    margin: 15px 0;
-}
-
-.notification-image {
-    max-width: 100%;
-    border-radius: 10px;
-    border: 1px solid var(--border-color);
-}
-
-.notification-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 15px;
-}
-
-.btn-pdf {
-    padding: 8px 16px;
-    background: linear-gradient(135deg, var(--danger), #e11575);
-    border: none;
-    border-radius: 8px;
-    color: white;
-    font-size: 0.9rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: var(--transition-normal);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    text-decoration: none;
-}
-
-.btn-pdf:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(247, 37, 133, 0.4);
-}
-
-.loading-notifications {
-    text-align: center;
-    padding: 40px 20px;
-    color: var(--text-muted);
-}
-
-.loading-notifications .spinner {
-    margin: 0 auto 20px;
-}
-
-/* Footer */
-.main-footer {
-    margin-top: 60px;
-    padding: 50px 0 30px;
-    background: var(--bg-card);
-    border-top: 1px solid var(--border-color);
-}
-
-.footer-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 20px;
-}
-
-.footer-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 40px;
-    margin-bottom: 40px;
-}
-
-.footer-col h3 {
-    font-size: 1.2rem;
-    color: var(--primary);
-    margin-bottom: 20px;
-    font-weight: 600;
-}
-
-.footer-col p {
-    color: var(--text-muted);
-    line-height: 1.6;
-    margin-bottom: 20px;
-    font-size: 0.95rem;
-}
-
-.app-features {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 20px;
-}
-
-.feature-badge {
-    padding: 6px 12px;
-    background: var(--bg-dark);
-    border-radius: 20px;
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    border: 1px solid var(--border-color);
-}
-
-.feature-badge i {
-    color: var(--primary);
-    font-size: 0.9rem;
-}
-
-.footer-links {
-    list-style: none;
-}
-
-.footer-links li {
-    margin-bottom: 12px;
-}
-
-.footer-links li a {
-    color: var(--text-muted);
-    text-decoration: none;
-    transition: var(--transition-normal);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.footer-links li a:hover {
-    color: var(--text-primary);
-    transform: translateX(5px);
-}
-
-.footer-links li a i {
-    width: 20px;
-    color: var(--primary);
-}
-
-.install-app-btn {
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
-    border: none;
-    color: white;
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: var(--transition-normal);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 10px;
-}
-
-.install-app-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
-}
-
-.copyright {
-    text-align: center;
-    padding-top: 30px;
-    border-top: 1px solid var(--border-color);
-    color: var(--text-muted);
-    font-size: 0.9rem;
-}
-
-/* Snow Effect Styles */
-.snowflake {
-    position: fixed;
-    top: -10px;
-    color: white;
-    font-size: 1em;
-    pointer-events: none;
-    user-select: none;
-    z-index: 1000;
-    opacity: 0.8;
-    text-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
-}
-
-@keyframes fall {
-    to {
-        transform: translateY(100vh) rotate(360deg);
-        opacity: 0;
-    }
-}
-
-/* Confetti Effect Styles */
-.confetti {
-    position: fixed;
-    width: 10px;
-    height: 10px;
-    pointer-events: none;
-    z-index: 1000;
-    opacity: 0.8;
-}
-
-@keyframes confettiFall {
-    0% {
-        transform: translateY(0) rotate(0deg);
-        opacity: 1;
-    }
-    100% {
-        transform: translateY(100vh) rotate(360deg) translateX(calc(var(--tx) * 1px));
-        opacity: 0;
-    }
-}
-
-/* Ripple Effect Styles */
-.ripple {
-    position: absolute;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.3);
-    transform: scale(0);
-    animation: ripple-animation 0.6s linear;
-    pointer-events: none;
-}
-
-@keyframes ripple-animation {
-    to {
-        transform: scale(4);
-        opacity: 0;
-    }
-}
-
-/* Enhanced Loading Spinner */
-.dual-ring-spinner {
-    display: inline-block;
-    width: 80px;
-    height: 80px;
-}
-
-.dual-ring-spinner:after {
-    content: " ";
-    display: block;
-    width: 64px;
-    height: 64px;
-    margin: 8px;
-    border-radius: 50%;
-    border: 6px solid var(--primary);
-    border-color: var(--primary) transparent var(--primary) transparent;
-    animation: dual-ring 1.2s linear infinite;
-}
-
-@keyframes dual-ring {
-    0% {
-        transform: rotate(0deg);
-    }
-    100% {
-        transform: rotate(360deg);
-    }
-}
-
-/* Animated Dots for Loading */
-.animated-dots {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-}
-
-.dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--primary);
-    animation: dot-pulse 1.4s ease-in-out infinite;
-}
-
-.dot:nth-child(2) {
-    animation-delay: 0.2s;
-}
-
-.dot:nth-child(3) {
-    animation-delay: 0.4s;
-}
-
-@keyframes dot-pulse {
-    0%, 60%, 100% {
-        transform: scale(1);
-        opacity: 0.7;
-    }
-    30% {
-        transform: scale(1.5);
-        opacity: 1;
-    }
-}
-
-/* Floating Elements */
-.floating-element {
-    animation: float 3s ease-in-out infinite;
-}
-
-@keyframes float {
-    0%, 100% {
-        transform: translateY(0);
-    }
-    50% {
-        transform: translateY(-10px);
-    }
-}
-
-/* Pulsing Notification Badge */
-.pulse-badge {
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% {
-        transform: scale(1);
-        box-shadow: 0 0 0 0 rgba(247, 37, 133, 0.7);
-    }
-    50% {
-        transform: scale(1.05);
-        box-shadow: 0 0 0 10px rgba(247, 37, 133, 0);
-    }
-}
-
-/* Gradient Overlays */
-.gradient-overlay {
-    position: relative;
-}
-
-.gradient-overlay::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, 
-        rgba(67, 97, 238, 0.1) 0%, 
-        rgba(114, 9, 183, 0.1) 100%);
-    pointer-events: none;
-    border-radius: inherit;
-}
-
-/* Hover Effects */
-.hover-lift {
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.hover-lift:hover {
-    transform: translateY(-5px);
-    box-shadow: var(--shadow-lg);
-}
-
-.hover-glow {
-    transition: box-shadow 0.3s ease;
-}
-
-.hover-glow:hover {
-    box-shadow: 0 0 20px rgba(67, 97, 238, 0.5);
-}
-
-/* Smooth Transitions */
-.smooth-transition {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Status Badges */
-.status-badge {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 500;
-}
-
-.status-active {
-    background: rgba(76, 201, 240, 0.2);
-    color: var(--success);
-    border: 1px solid rgba(76, 201, 240, 0.3);
-}
-
-.status-inactive {
-    background: rgba(247, 37, 133, 0.2);
-    color: var(--danger);
-    border: 1px solid rgba(247, 37, 133, 0.3);
-}
-
-/* Button Styles */
-.btn {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 8px;
-    font-size: 0.95rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: var(--transition-normal);
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
-    color: white;
-}
-
-.btn-secondary {
-    background: var(--bg-dark);
-    color: var(--text-primary);
-    border: 1px solid var(--border-color);
-}
-
-.btn-primary:hover, .btn-secondary:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-}
-
-.btn-primary:active, .btn-secondary:active {
-    transform: translateY(0);
-}
-
-/* Responsive Design */
-@media (max-width: 1024px) {
-    .header-container {
-        flex-direction: column;
-        text-align: center;
-        gap: 15px;
-    }
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
     
-    .logo-section {
-        align-items: center;
-    }
-    
-    .header-controls {
-        width: 100%;
-        justify-content: center;
-        flex-wrap: wrap;
-    }
-}
+    <style>
+        /* Install App Button */
+        .install-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #4361ee, #7209b7);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(67, 97, 238, 0.4);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .install-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(67, 97, 238, 0.6);
+        }
+        
+        /* Loading Animation */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0f172a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.3s ease;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #4361ee;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            color: #94a3b8;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        
+        /* Notification Badge */
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #f72585;
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        /* Snow Effect Styles */
+        .snowflake {
+            position: fixed;
+            top: -10px;
+            color: white;
+            font-size: 1em;
+            pointer-events: none;
+            user-select: none;
+            z-index: 1000;
+            opacity: 0.8;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
+        }
 
-@media (max-width: 768px) {
-    .main-content {
-        padding: 0 15px;
-    }
-    
-    .logo h1 {
-        font-size: 1.5rem;
-    }
-    
-    .time-display {
-        min-width: 150px;
-        padding: 8px 15px;
-    }
-    
-    .time-display .time {
-        font-size: 1.1rem;
-    }
-    
-    .countdown-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .timer-display {
-        flex-wrap: wrap;
-    }
-    
-    .time-unit {
-        flex: 0 0 calc(50% - 5px);
-    }
-    
-    .chat-controls {
-        flex-direction: column;
-    }
-    
-    .input-group {
-        width: 100%;
-    }
-    
-    .footer-grid {
-        grid-template-columns: 1fr;
-        gap: 30px;
-    }
-    
-    .effects-toggle {
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-    }
-    
-    .effects-status {
-        bottom: 70px;
-        left: 50%;
-        transform: translateX(-50%);
-        text-align: center;
-    }
-}
+        /* Confetti Effect Styles */
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0.8;
+        }
 
-@media (max-width: 480px) {
-    .header-controls {
-        gap: 10px;
-    }
-    
-    .notification-icon {
-        width: 40px;
-        height: 40px;
-    }
-    
-    .admin-link {
-        padding: 8px 15px;
-        font-size: 0.9rem;
-    }
-    
-    .exam-card {
-        padding: 20px;
-    }
-    
-    .time-value {
-        font-size: 1.8rem;
-    }
-    
-    .modal-content {
-        width: 95%;
-        max-height: 90vh;
-    }
-}
+        /* Effects Toggle Button */
+        .effects-toggle {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: linear-gradient(135deg, #4361ee, #7209b7);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(67, 97, 238, 0.4);
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
 
-/* Utility Classes */
-.text-center { text-align: center; }
-.mt-20 { margin-top: 20px; }
-.mb-20 { margin-bottom: 20px; }
-.d-flex { display: flex; }
-.align-center { align-items: center; }
-.justify-center { justify-content: center; }
-.gap-10 { gap: 10px; }
-.gap-20 { gap: 20px; }
-.w-100 { width: 100%; }
-.h-100 { height: 100%; }
+        .effects-toggle:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(67, 97, 238, 0.6);
+        }
 
-/* Mobile Optimizations */
-@media (max-width: 480px) {
-    .exam-card {
-        padding: 15px;
-    }
+        /* Effects Status Badge */
+        .effects-status {
+            position: fixed;
+            bottom: 80px;
+            left: 20px;
+            background: rgba(30, 41, 59, 0.9);
+            color: #4cc9f0;
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 500;
+            z-index: 999;
+            border: 1px solid #334155;
+            backdrop-filter: blur(10px);
+            display: none;
+            align-items: center;
+            gap: 8px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(10px); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Effects Canvas -->
+    <canvas id="effectCanvas"></canvas>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading Exam Master...</div>
+    </div>
+
+    <!-- Install App Button -->
+    <button class="install-btn" id="installButton">
+        <i class="fas fa-download"></i> Install App
+    </button>
+
+    <!-- Effects Toggle Button -->
+    <button class="effects-toggle" id="effectsToggle" style="display: none;">
+        <i class="fas fa-magic"></i> Effects
+    </button>
+
+    <!-- Effects Status -->
+    <div class="effects-status" id="effectsStatus"></div>
+
+    <!-- Header -->
+    <header class="main-header">
+        <div class="header-container">
+            <div class="logo-section">
+                <div class="logo">
+                    <i class="fas fa-graduation-cap"></i>
+                    <h1>Exam Master SL</h1>
+                </div>
+                <p class="subtitle">Your Ultimate Exam Preparation Companion</p>
+            </div>
+            
+            <div class="header-controls">
+                <div class="notification-icon" id="notificationIcon">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge" id="notifBadge">0</span>
+                </div>
+                
+                <div class="time-display">
+                    <div id="currentDate" class="date">-- --- ----</div>
+                    <div id="currentTime" class="time">--:--</div>
+                </div>
+                
+                <a href="admin.html" class="admin-link">
+                    <i class="fas fa-user-shield"></i> Admin
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Countdown Dashboard -->
+        <section class="dashboard-section">
+            <div class="section-header">
+                <h2><i class="fas fa-clock"></i> Exam Countdown</h2>
+                <p>Track your upcoming exams with live countdowns</p>
+            </div>
+            
+            <div class="countdown-grid" id="examGrid">
+                <!-- Exams will be loaded here -->
+                <div class="exam-card loading">
+                    <div class="exam-card-content">
+                        <div class="skeleton-line" style="width: 70%; height: 24px; margin-bottom: 12px;"></div>
+                        <div class="skeleton-line" style="width: 50%; height: 16px; margin-bottom: 20px;"></div>
+                        <div class="timer-skeleton">
+                            <div class="skeleton-circle"></div>
+                            <div class="skeleton-circle"></div>
+                            <div class="skeleton-circle"></div>
+                            <div class="skeleton-circle"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Chat & Community -->
+        <section class="chat-section">
+            <div class="section-header">
+                <h2><i class="fas fa-comments"></i> Study Community</h2>
+                <p>Connect and collaborate with fellow students</p>
+            </div>
+            
+            <div class="chat-container">
+                <div class="chat-box" id="chatBox">
+                    <!-- Welcome message -->
+                    <div class="chat-welcome">
+                        <div class="welcome-icon">
+                            <i class="fas fa-comment-alt"></i>
+                        </div>
+                        <h3>Welcome to Study Community!</h3>
+                        <p>Start chatting with fellow students. Share notes, ask questions, and study together.</p>
+                    </div>
+                </div>
+
+                <div class="chat-controls">
+                    <div class="input-group">
+                        <input type="text" id="chatName" class="chat-input" placeholder="Your Name" maxlength="30">
+                    </div>
+                    <div class="input-group message-input">
+                        <input type="text" id="chatMessage" class="chat-input" placeholder="Type your message..." maxlength="500">
+                        <button class="send-btn" onclick="sendComment()">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="chat-info">
+                    <i class="fas fa-info-circle"></i>
+                    <span>All messages are public. Please maintain respectful communication.</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Notification Modal -->
+    <div id="notifModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-bell"></i> Important Notifications</h3>
+                <button class="modal-close" onclick="closeNotifModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalNotifContent">
+                <div class="loading-notifications">
+                    <div class="spinner"></div>
+                    <p>Loading notifications...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="main-footer">
+        <div class="footer-container">
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <h3>Exam Master SL</h3>
+                    <p>Advanced platform designed for Sri Lankan students to excel in their examinations with smart tools and community support.</p>
+                    <div class="app-features">
+                        <span class="feature-badge">
+                            <i class="fas fa-bolt"></i> Fast
+                        </span>
+                        <span class="feature-badge">
+                            <i class="fas fa-shield-alt"></i> Secure
+                        </span>
+                        <span class="feature-badge">
+                            <i class="fas fa-mobile-alt"></i> PWA
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="footer-col">
+                    <h3>Quick Links</h3>
+                    <ul class="footer-links">
+                        <li><a href="#"><i class="fas fa-home"></i> Home</a></li>
+                        <li><a href="#"><i class="fas fa-book"></i> Syllabus</a></li>
+                        <li><a href="#"><i class="fas fa-file-pdf"></i> Past Papers</a></li>
+                        <li><a href="admin.html"><i class="fas fa-user-cog"></i> Admin Panel</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-col">
+                    <h3>Connect With Us</h3>
+                    <ul class="footer-links">
+                        <li><a href="#"><i class="fab fa-facebook"></i> Facebook</a></li>
+                        <li><a href="#"><i class="fab fa-youtube"></i> YouTube</a></li>
+                        <li><a href="#"><i class="fab fa-telegram"></i> Telegram</a></li>
+                        <li><a href="#"><i class="fab fa-whatsapp"></i> WhatsApp</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-col">
+                    <h3>Download Our App</h3>
+                    <p>Install Exam Master as a Progressive Web App for better experience.</p>
+                    <button class="install-app-btn" onclick="installApp()">
+                        <i class="fas fa-download"></i> Install Now
+                    </button>
+                </div>
+            </div>
+            
+            <div class="copyright">
+                &copy; 2024 Exam Master SL. All rights reserved.
+                <span style="color: #4361ee;">♥</span> Made for Sri Lankan Students
+            </div>
+        </div>
+    </footer>
+
+    <!-- Main JavaScript -->
+    <script type="module" src="app.js"></script>
+
+    <!-- Effects System for Main Website -->
+    <script>
+        // Effects System
+        let effectsEnabled = {
+            snow: false,
+            particle: false,
+            confetti: false,
+            ripple: true
+        };
+        
+        let effectIntervals = {};
+        let particles = [];
+        
+        // Check Effects Status
+        async function checkEffectsStatus() {
+            try {
+                if (!window.supabase) return;
+                
+                const { data: settings, error } = await supabase
+                    .from('site_settings')
+                    .select('*')
+                    .in('setting_key', ['snow_effect', 'particle_effect', 'confetti_effect', 'ripple_effect']);
+                
+                if (error) {
+                    console.log('Could not load effects settings:', error.message);
+                    return;
+                }
+                
+                // Reset all effects
+                stopAllEffects();
+                
+                if (settings && settings.length > 0) {
+                    settings.forEach(setting => {
+                        const effectName = setting.setting_key.replace('_effect', '');
+                        if (setting.is_enabled) {
+                            effectsEnabled[effectName] = true;
+                            
+                            // Start effect if enabled
+                            if (effectName === 'snow') {
+                                startSnowEffect();
+                            } else if (effectName === 'particle') {
+                                startParticleEffect();
+                            } else if (effectName === 'confetti') {
+                                startConfettiEffect();
+                            } else if (effectName === 'ripple') {
+                                enableRippleEffects();
+                            }
+                        }
+                    });
+                    
+                    // Show status if any effects are active
+                    const activeEffects = Object.keys(effectsEnabled).filter(e => effectsEnabled[e]);
+                    if (activeEffects.length > 0) {
+                        showEffectsStatus(`${activeEffects.length} effect(s) active ✨`);
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking effects status:', error);
+            }
+        }
+        
+        // Snow Effect
+        function startSnowEffect() {
+            if (!effectsEnabled.snow) return;
+            
+            stopEffect('snow');
+            
+            // Create snowflakes
+            for (let i = 0; i < 30; i++) {
+                createSnowflake();
+            }
+            
+            effectIntervals.snow = setInterval(createSnowflake, 500);
+            
+            console.log('Snow effect started ❄️');
+        }
+        
+        function createSnowflake() {
+            const snowflake = document.createElement('div');
+            snowflake.className = 'snowflake';
+            snowflake.innerHTML = '❄';
+            snowflake.style.left = Math.random() * 100 + 'vw';
+            snowflake.style.fontSize = Math.random() * 20 + 10 + 'px';
+            snowflake.style.opacity = Math.random() * 0.6 + 0.3;
+            snowflake.style.animation = `fall linear ${Math.random() * 3 + 5}s infinite`;
+            snowflake.style.animationDelay = Math.random() * 5 + 's';
+            
+            document.body.appendChild(snowflake);
+            
+            setTimeout(() => {
+                if (snowflake.parentElement) {
+                    snowflake.remove();
+                }
+            }, 8000);
+        }
+        
+        // Particle Effect
+        function startParticleEffect() {
+            if (!effectsEnabled.particle) return;
+            
+            stopEffect('particle');
+            
+            const canvas = document.getElementById('effectCanvas');
+            if (!canvas) {
+                // Create canvas if not exists
+                const newCanvas = document.createElement('canvas');
+                newCanvas.id = 'effectCanvas';
+                newCanvas.style.position = 'fixed';
+                newCanvas.style.top = '0';
+                newCanvas.style.left = '0';
+                newCanvas.style.width = '100%';
+                newCanvas.style.height = '100%';
+                newCanvas.style.pointerEvents = 'none';
+                newCanvas.style.zIndex = '1';
+                document.body.appendChild(newCanvas);
+            }
+            
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            particles = [];
+            const particleCount = 50;
+            
+            for (let i = 0; i < particleCount; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 3 + 1,
+                    speedX: Math.random() * 0.5 - 0.25,
+                    speedY: Math.random() * 0.5 - 0.25,
+                    color: `rgba(${Math.floor(Math.random() * 100 + 155)}, 
+                              ${Math.floor(Math.random() * 100 + 155)}, 
+                              ${Math.floor(Math.random() * 200 + 55)}, 
+                              ${Math.random() * 0.5 + 0.3})`
+                });
+            }
+            
+            function animateParticles() {
+                if (!effectsEnabled.particle) return;
+                
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                particles.forEach(particle => {
+                    particle.x += particle.speedX;
+                    particle.y += particle.speedY;
+                    
+                    // Bounce off edges
+                    if (particle.x < 0 || particle.x > canvas.width) particle.speedX *= -1;
+                    if (particle.y < 0 || particle.y > canvas.height) particle.speedY *= -1;
+                    
+                    // Draw particle
+                    ctx.beginPath();
+                    ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = particle.color;
+                    ctx.fill();
+                    
+                    // Draw connections
+                    particles.forEach(otherParticle => {
+                        const dx = particle.x - otherParticle.x;
+                        const dy = particle.y - otherParticle.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < 100) {
+                            ctx.beginPath();
+                            ctx.strokeStyle = `rgba(255, 255, 255, ${0.1 * (1 - distance / 100)})`;
+                            ctx.lineWidth = 0.5;
+                            ctx.moveTo(particle.x, particle.y);
+                            ctx.lineTo(otherParticle.x, otherParticle.y);
+                            ctx.stroke();
+                        }
+                    });
+                });
+                
+                requestAnimationFrame(animateParticles);
+            }
+            
+            animateParticles();
+            console.log('Particle effect started ✨');
+        }
+        
+        // Confetti Effect
+        function startConfettiEffect() {
+            if (!effectsEnabled.confetti) return;
+            
+            stopEffect('confetti');
+            
+            for (let i = 0; i < 100; i++) {
+                createConfettiPiece();
+            }
+            
+            effectIntervals.confetti = setInterval(createConfettiPiece, 200);
+            
+            console.log('Confetti effect started 🎉');
+        }
+        
+        function createConfettiPiece() {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti';
+            
+            const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#FF9FF3', '#54A0FF', '#00D2D3'];
+            confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            confetti.style.left = Math.random() * 100 + 'vw';
+            confetti.style.top = '-10px';
+            confetti.style.width = Math.random() * 15 + 5 + 'px';
+            confetti.style.height = Math.random() * 15 + 5 + 'px';
+            confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+            confetti.style.setProperty('--tx', Math.random() * 200 - 100);
+            confetti.style.animation = `confettiFall linear ${Math.random() * 3 + 2}s forwards`;
+            confetti.style.animationDelay = Math.random() * 1 + 's';
+            
+            document.body.appendChild(confetti);
+            
+            setTimeout(() => {
+                if (confetti.parentElement) {
+                    confetti.remove();
+                }
+            }, 5000);
+        }
+        
+        // Ripple Effect
+        function enableRippleEffects() {
+            if (!effectsEnabled.ripple) return;
+            
+            // Add ripple to all buttons
+            document.querySelectorAll('button, .btn, .send-btn, .admin-link, .notification-icon').forEach(button => {
+                button.addEventListener('click', createRipple);
+            });
+            
+            console.log('Ripple effects enabled 🌊');
+        }
+        
+        function createRipple(event) {
+            if (!effectsEnabled.ripple) return;
+            
+            const button = event.currentTarget;
+            const ripple = document.createElement('span');
+            const rect = button.getBoundingClientRect();
+            
+            const size = Math.max(rect.width, rect.height);
+            const x = event.clientX - rect.left - size / 2;
+            const y = event.clientY - rect.top - size / 2;
+            
+            ripple.style.cssText = `
+                position: absolute;
+                border-radius: 50%;
+                background: rgba(255, 255, 255, 0.7);
+                transform: scale(0);
+                animation: ripple-animation 0.6s linear;
+                width: ${size}px;
+                height: ${size}px;
+                top: ${y}px;
+                left: ${x}px;
+                pointer-events: none;
+            `;
+            
+            button.style.position = 'relative';
+            button.style.overflow = 'hidden';
+            button.appendChild(ripple);
+            
+            setTimeout(() => {
+                if (ripple.parentElement) {
+                    ripple.remove();
+                }
+            }, 600);
+        }
+        
+        // Stop Specific Effect
+        function stopEffect(effect) {
+            if (effectIntervals[effect]) {
+                clearInterval(effectIntervals[effect]);
+                delete effectIntervals[effect];
+            }
+            
+            // Remove effect elements
+            if (effect === 'snow') {
+                document.querySelectorAll('.snowflake').forEach(el => el.remove());
+            } else if (effect === 'confetti') {
+                document.querySelectorAll('.confetti').forEach(el => el.remove());
+            } else if (effect === 'particle') {
+                particles = [];
+                const canvas = document.getElementById('effectCanvas');
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            }
+        }
+        
+        // Stop All Effects
+        function stopAllEffects() {
+            Object.keys(effectIntervals).forEach(effect => {
+                clearInterval(effectIntervals[effect]);
+            });
+            effectIntervals = {};
+            
+            document.querySelectorAll('.snowflake, .confetti').forEach(el => el.remove());
+            
+            particles = [];
+            const canvas = document.getElementById('effectCanvas');
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+            
+            Object.keys(effectsEnabled).forEach(key => {
+                effectsEnabled[key] = false;
+            });
+            
+            console.log('All effects stopped');
+        }
+        
+        // Show Effects Status
+        function showEffectsStatus(message) {
+            const statusDiv = document.getElementById('effectsStatus');
+            if (statusDiv) {
+                statusDiv.innerHTML = `<i class="fas fa-magic"></i> ${message}`;
+                statusDiv.style.display = 'flex';
+                
+                // Auto hide after 5 seconds
+                setTimeout(() => {
+                    statusDiv.style.animation = 'fadeOut 0.3s ease';
+                    setTimeout(() => {
+                        statusDiv.style.display = 'none';
+                        statusDiv.style.animation = '';
+                    }, 300);
+                }, 5000);
+            }
+        }
+        
+        // Initialize Effects
+        document.addEventListener('DOMContentLoaded', function() {
+            // Create effects toggle button
+            const toggleBtn = document.getElementById('effectsToggle');
+            if (toggleBtn) {
+                toggleBtn.style.display = 'flex';
+                toggleBtn.onclick = toggleEffectsMenu;
+            }
+            
+            // Wait for app to load
+            setTimeout(() => {
+                if (window.supabase) {
+                    checkEffectsStatus();
+                }
+                
+                // Always enable ripple by default
+                enableRippleEffects();
+            }, 3000);
+        });
+        
+        // Toggle Effects Menu
+        function toggleEffectsMenu() {
+            const menuHTML = `
+                <div id="effectsMenu" style="
+                    position: fixed;
+                    bottom: 80px;
+                    left: 20px;
+                    background: rgba(30, 41, 59, 0.95);
+                    backdrop-filter: blur(10px);
+                    border-radius: 12px;
+                    padding: 20px;
+                    z-index: 999;
+                    min-width: 250px;
+                    border: 1px solid #334155;
+                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+                    animation: fadeIn 0.3s ease;
+                ">
+                    <h4 style="margin: 0 0 15px 0; color: #f8fafc;">
+                        <i class="fas fa-magic"></i> Site Effects
+                    </h4>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <button onclick="startSnowEffect()" style="
+                            padding: 10px 15px;
+                            background: rgba(76, 201, 240, 0.2);
+                            border: 1px solid rgba(76, 201, 240, 0.4);
+                            color: #4cc9f0;
+                            border-radius: 8px;
+                            cursor: pointer;
+                            text-align: left;
+                            display: flex;
+                            align-items: center;
+                            gap: 10px;
+                        ">
+                            <i class="fas fa-snowflake"></i> Start Snow Effect
+                        </button>
+                        <button onclick="startConfettiEffect()" style="
+                            padding: 10px 15px;
+                            background: rgba(247, 37, 133, 0.2);
+                            border: 1px solid rgba(247, 37, 133, 0.4);
+                            color: #f72585;
+                            border-radius: 8px;
+                            cursor: pointer;
+                            text-align: left;
+                            display: flex;
+                            align-items: center;
+                            gap: 10px;
+                        ">
+                            <i class="fas fa-fireworks"></i> Start Confetti Effect
+                        </button>
+                        <button onclick="stopAllEffects()" style="
+                            padding: 10px 15px;
+                            background: rgba(248, 150, 30, 0.2);
+                            border: 1px solid rgba(248, 150, 30, 0.4);
+                            color: #f8961e;
+                            border-radius: 8px;
+                            cursor: pointer;
+                            text-align: left;
+                            display: flex;
+                            align-items: center;
+                            gap: 10px;
+                        ">
+                            <i class="fas fa-stop"></i> Stop All Effects
+                        </button>
+                    </div>
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #334155;">
+                        <small style="color: #94a3b8; font-size: 0.8rem;">
+                            Effects controlled by admin panel
+                        </small>
+                    </div>
+                </div>
+            `;
+            
+            // Remove existing menu if any
+            const existingMenu = document.getElementById('effectsMenu');
+            if (existingMenu) {
+                existingMenu.remove();
+                return;
+            }
+            
+            const menuDiv = document.createElement('div');
+            menuDiv.innerHTML = menuHTML;
+            document.body.appendChild(menuDiv);
+            
+            // Close menu when clicking outside
+            setTimeout(() => {
+                document.addEventListener('click', function closeMenu(e) {
+                    const menu = document.getElementById('effectsMenu');
+                    if (menu && !menu.contains(e.target) && e.target.id !== 'effectsToggle') {
+                        menu.remove();
+                        document.removeEventListener('click', closeMenu);
+                    }
+                });
+            }, 100);
+        }
+        
+        // Make functions available globally
+        window.startSnowEffect = startSnowEffect;
+        window.startConfettiEffect = startConfettiEffect;
+        window.stopAllEffects = stopAllEffects;
+        window.toggleEffectsMenu = toggleEffectsMenu;
+    </script>
     
-    .timer-display {
-        gap: 8px;
-    }
-    
-    .time-unit {
-        padding: 12px 8px;
-    }
-    
-    .time-value {
-        font-size: 1.5rem;
-    }
-    
-    .time-label {
-        font-size: 0.75rem;
-    }
-    
-    .chat-box {
-        height: 300px;
-        padding: 15px;
-    }
-    
-    .chat-controls {
-        padding: 15px;
-    }
-    
-    .chat-input {
-        padding: 12px 15px;
-        font-size: 0.95rem;
-    }
-}
+    <!-- PWA Installation & Time Update -->
+    <script>
+        // PWA Installation
+        let deferredPrompt;
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installButton').style.display = 'flex';
+        });
+        
+        function installApp() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted the install prompt');
+                        document.getElementById('installButton').style.display = 'none';
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        }
+        
+        window.installApp = installApp;
+        
+        // Time Update Function
+        function updateTime() {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            const timeStr = now.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            
+            document.getElementById('currentDate').textContent = dateStr;
+            document.getElementById('currentTime').textContent = timeStr;
+        }
+        
+        // Initialize
+        updateTime();
+        setInterval(updateTime, 1000);
+        
+        // Hide loading overlay after 2 seconds
+        setTimeout(() => {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }, 2000);
+        
+        // Notification icon click
+        document.getElementById('notificationIcon').addEventListener('click', function() {
+            if (window.openNotifModal) {
+                window.openNotifModal();
+            }
+        });
+        
+        // Modal close on outside click
+        document.getElementById('notifModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeNotifModal();
+            }
+        });
+        
+        // Global modal close function
+        window.closeNotifModal = function() {
+            document.getElementById('notifModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+        
+        // Modal open function
+        window.openNotifModal = function() {
+            document.getElementById('notifModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+    </script>
+</body>
+</html>
