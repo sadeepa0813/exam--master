@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Master SL - Admin Dashboard</title>
+    
+    <!-- Google Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="admin.css">
+    
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner-container">
+            <div class="spinner"></div>
+            <p class="loading-text">Loading Admin Panel...</p>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="admin-container">
+        <!-- Login Section -->
+        <div id="loginSection" class="login-section">
+            <div class="login-card">
+                <div class="login-header">
+                    <div class="logo">
+                        <i class="fas fa-graduation-cap"></i>
+                        <h1>Exam Master</h1>
+                    </div>
+                    <p class="subtitle">Administrator Control Panel</p>
+                </div>
+                
+                <div class="login-body">
+                    <div class="form-group">
+                        <label for="adminEmail">
+                            <i class="fas fa-envelope"></i> Email Address
+                        </label>
+                        <input type="email" id="adminEmail" placeholder="admin@exammaster.lk">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="adminPassword">
+                            <i class="fas fa-lock"></i> Password
+                        </label>
+                        <input type="password" id="adminPassword" placeholder="••••••••">
+                    </div>
+                    
+                    <button class="btn-login" onclick="adminLogin()">
+                        <i class="fas fa-sign-in-alt"></i> Sign In
+                    </button>
+                    
+                    <div class="login-footer">
+                        <p><i class="fas fa-info-circle"></i> Use admin credentials provided by system administrator</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Section -->
+        <div id="dashboardSection" class="dashboard-section" style="display: none;">
+            <!-- Top Navigation -->
+            <nav class="admin-nav">
+                <div class="nav-left">
+                    <div class="nav-logo">
+                        <i class="fas fa-graduation-cap"></i>
+                        <span>Exam Master Admin</span>
+                    </div>
+                </div>
+                
+                <div class="nav-center">
+                    <div class="time-display">
+                        <div id="currentDate" class="date">-- --- ----</div>
+                        <div id="currentTime" class="time">--:--:--</div>
+                    </div>
+                </div>
+                
+                <div class="nav-right">
+                    <div class="user-profile">
+                        <div class="user-info">
+                            <span id="adminName">Administrator</span>
+                            <small id="adminEmailDisplay">admin@exammaster.lk</small>
+                        </div>
+                        <div class="user-avatar">
+                            <i class="fas fa-user-shield"></i>
+                        </div>
+                    </div>
+                    <button class="btn-logout" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
+            </nav>
+
+            <!-- Main Dashboard Content -->
+            <div class="dashboard-content">
+                <!-- Sidebar -->
+                <aside class="sidebar">
+                    <div class="sidebar-header">
+                        <h3><i class="fas fa-tachometer-alt"></i> Dashboard</h3>
+                    </div>
+                    
+                    <ul class="sidebar-menu">
+                        <li class="active" onclick="showSection('dashboard')">
+                            <i class="fas fa-home"></i> Dashboard
+                        </li>
+                        <li onclick="showSection('exams')">
+                            <i class="fas fa-calendar-alt"></i> Exams
+                        </li>
+                        <li onclick="showSection('notifications')">
+                            <i class="fas fa-bell"></i> Notifications
+                        </li>
+                        <li onclick="showSection('chat')">
+                            <i class="fas fa-comments"></i> Chat Management
+                        </li>
+                        <li onclick="showSection('effects')">
+                            <i class="fas fa-magic"></i> Site Effects
+                        </li>
+                        <li onclick="showSection('settings')">
+                            <i class="fas fa-cog"></i> Settings
+                        </li>
+                        <li onclick="showSection('analytics')">
+                            <i class="fas fa-chart-line"></i> Analytics
+                        </li>
+                    </ul>
+                    
+                    <div class="sidebar-footer">
+                        <div class="system-status">
+                            <div class="status-indicator active"></div>
+                            <span>System Online</span>
+                        </div>
+                        <div class="database-status">
+                            <div class="status-indicator" id="dbStatus"></div>
+                            <span>Database</span>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Main Content -->
+                <main class="main-content">
+                    <!-- Dashboard Section -->
+                    <section id="section-dashboard" class="content-section active">
+                        <div class="section-header">
+                            <h2><i class="fas fa-tachometer-alt"></i> Dashboard Overview</h2>
+                            <p>Real-time system statistics and activity</p>
+                        </div>
+                        
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-icon bg-primary">
+                                    <i class="fas fa-calendar-alt"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <h3 id="statExams">0</h3>
+                                    <p>Active Exams</p>
+                                </div>
+                            </div>
+                            
+                            <div class="stat-card">
+                                <div class="stat-icon bg-success">
+                                    <i class="fas fa-bell"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <h3 id="statNotifications">0</h3>
+                                    <p>Notifications</p>
+                                </div>
+                            </div>
+                            
+                            <div class="stat-card">
+                                <div class="stat-icon bg-warning">
+                                    <i class="fas fa-comments"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <h3 id="statComments">0</h3>
+                                    <p>Chat Messages</p>
+                                </div>
+                            </div>
+                            
+                            <div class="stat-card">
+                                <div class="stat-icon bg-info">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <h3 id="statUsers">0</h3>
+                                    <p>Active Users</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="recent-activity">
+                            <h3><i class="fas fa-history"></i> Recent Activity</h3>
+                            <div class="activity-list" id="activityList">
+                                <!-- Activity items will be loaded here -->
+                            </div>
+                        </div>
+                    </section>
+                    <!-- Replace the image upload section in admin.html -->
+<div class="form-group">
+    <label>Upload Image (Optional)</label>
+    <div class="file-upload">
+        <input type="file" id="notificationImage" accept="image/*" onchange="previewImage(event)">
+        <label for="notificationImage">
+            <i class="fas fa-cloud-upload-alt"></i> Choose Image
+        </label>
+    </div>
+    <!-- Image Preview Section -->
+    <div class="image-preview-container" id="imagePreviewContainer" style="display: none; margin-top: 15px;">
+        <div style="display: flex; align-items: center; gap: 15px; background: var(--bg-dark); padding: 15px; border-radius: 10px; border: 1px solid var(--border-color);">
+            <div style="position: relative;">
+                <img id="imagePreview" style="width: 80px; height: 80px; object-fit: cover; border-radius: 6px; border: 2px solid var(--primary);">
+                <div id="imageBadge" style="position: absolute; top: -8px; right: -8px; background: var(--primary); color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px;">
+                    <i class="fas fa-image"></i>
+                </div>
+            </div>
+            <div style="flex: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                    <strong id="imageFileName" style="color: var(--text-primary); font-size: 0.9rem;"></strong>
+                    <span id="imageFileSize" style="color: var(--text-muted); font-size: 0.8rem;"></span>
+                </div>
+                <div id="imageDimensions" style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 8px;"></div>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" onclick="removeImage()" style="padding: 5px 12px; background: var(--danger); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; gap: 5px;">
+                        <i class="fas fa-trash"></i> Remove
+                    </button>
+                    <button type="button" onclick="viewFullImage()" style="padding: 5px 12px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; gap: 5px;">
+                        <i class="fas fa-expand"></i> View
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+                    <!-- Exams Management Section -->
+                    <section id="section-exams" class="content-section">
+                        <div class="section-header">
+                            <h2><i class="fas fa-calendar-alt"></i> Exams Management</h2>
+                            <p>Add, edit, and manage upcoming exams</p>
+                        </div>
+                        
+                        <div class="form-card">
+                            <h3><i class="fas fa-plus-circle"></i> Add New Exam</h3>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Exam Name</label>
+                                    <input type="text" id="examName" placeholder="e.g., 2024 A/L Science Paper I">
+                                </div>
+                                <div class="form-group">
+                                    <label>Exam Date & Time</label>
+                                    <input type="datetime-local" id="examDateTime">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Description</label>
+                                <textarea id="examDescription" placeholder="Add exam details..."></textarea>
+                            </div>
+                            <button class="btn-primary" onclick="addNewExam()">
+                                <i class="fas fa-save"></i> Save Exam
+                            </button>
+                        </div>
+                        
+                        <div class="table-card">
+                            <h3><i class="fas fa-list"></i> Upcoming Exams</h3>
+                            <div class="table-responsive">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Exam Name</th>
+                                            <th>Date</th>
+                                            <th>Days Left</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="examsTable">
+                                        <!-- Exams will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Notifications Section -->
+                    <section id="section-notifications" class="content-section">
+                        <div class="section-header">
+                            <h2><i class="fas fa-bell"></i> Notifications Management</h2>
+                            <p>Send and manage site-wide notifications</p>
+                        </div>
+                        
+                        <div class="form-card">
+                            <h3><i class="fas fa-bullhorn"></i> Send Notification</h3>
+                            <div class="form-group">
+                                <label>Title</label>
+                                <input type="text" id="notificationTitle" placeholder="Notification title">
+                            </div>
+                            <div class="form-group">
+                                <label>Message</label>
+                                <textarea id="notificationMessage" placeholder="Enter your message..." rows="4"></textarea>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Upload Image (Optional)</label>
+                                    <div class="file-upload">
+                                        <input type="file" id="notificationImage" accept="image/*">
+                                        <label for="notificationImage">
+                                            <i class="fas fa-cloud-upload-alt"></i> Choose Image
+                                        </label>
+                                    </div>
+                                </div>
+                                <!-- Add after image upload section -->
+<div class="form-group">
+    <label>Upload PDF (Optional)</label>
+    <div class="file-upload">
+        <input type="file" id="notificationPdf" accept=".pdf">
+        <label for="notificationPdf">
+            <i class="fas fa-file-pdf"></i> Choose PDF File
+        </label>
+    </div>
+</div>
+                                <div class="form-group">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="notificationImportant">
+                                        <span class="checkmark"></span>
+                                        Mark as Important
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="notificationPersistent">
+                                        <span class="checkmark"></span>
+                                        Show until dismissed
+                                    </label>
+                                </div>
+                            </div>
+                            <button class="btn-primary" onclick="sendNotification()">
+                                <i class="fas fa-paper-plane"></i> Send Notification
+                            </button>
+                        </div>
+                        
+                        <div class="table-card">
+                            <h3><i class="fas fa-list"></i> Active Notifications</h3>
+                            <div id="notificationsList">
+                                <!-- Notifications will be loaded here -->
+                            </div>
+                        </div>
+                   
+                   <!-- Replace the image upload section in admin.html -->
+<div class="form-group">
+    <label>Upload Image (Optional)</label>
+    <div class="file-upload">
+        <input type="file" id="notificationImage" accept="image/*" onchange="previewImage(event)">
+        <label for="notificationImage">
+            <i class="fas fa-cloud-upload-alt"></i> Choose Image
+        </label>
+    </div>
+    <!-- Image Preview Section -->
+    <div class="image-preview-container" id="imagePreviewContainer" style="display: none; margin-top: 15px;">
+        <div style="display: flex; align-items: center; gap: 15px; background: var(--bg-dark); padding: 15px; border-radius: 10px; border: 1px solid var(--border-color);">
+            <div style="position: relative;">
+                <img id="imagePreview" style="width: 80px; height: 80px; object-fit: cover; border-radius: 6px; border: 2px solid var(--primary);">
+                <div id="imageBadge" style="position: absolute; top: -8px; right: -8px; background: var(--primary); color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px;">
+                    <i class="fas fa-image"></i>
+                </div>
+            </div>
+            <div style="flex: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                    <strong id="imageFileName" style="color: var(--text-primary); font-size: 0.9rem;"></strong>
+                    <span id="imageFileSize" style="color: var(--text-muted); font-size: 0.8rem;"></span>
+                </div>
+                <div id="imageDimensions" style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 8px;"></div>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" onclick="removeImage()" style="padding: 5px 12px; background: var(--danger); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; gap: 5px;">
+                        <i class="fas fa-trash"></i> Remove
+                    </button>
+                    <button type="button" onclick="viewFullImage()" style="padding: 5px 12px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; gap: 5px;">
+                        <i class="fas fa-expand"></i> View
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+ </section>
+                    <!-- Chat Management Section -->
+                    <section id="section-chat" class="content-section">
+                        <div class="section-header">
+                            <h2><i class="fas fa-comments"></i> Chat Management</h2>
+                            <p>Monitor and manage user conversations</p>
+                        </div>
+                        
+                        <div class="table-card">
+                            <div class="table-header">
+                                <h3><i class="fas fa-comment-dots"></i> Recent Messages</h3>
+                                <button class="btn-secondary" onclick="refreshChat()">
+                                    <i class="fas fa-sync-alt"></i> Refresh
+                                </button>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>User</th>
+                                            <th>Message</th>
+                                            <th>Time</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="chatTable">
+                                        <!-- Chat messages will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="stats-card">
+                            <h3><i class="fas fa-chart-bar"></i> Chat Statistics</h3>
+                            <div class="stats-row">
+                                <div class="stat-item">
+                                    <span class="stat-number" id="totalMessages">0</span>
+                                    <span class="stat-label">Total Messages</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-number" id="activeUsers">0</span>
+                                    <span class="stat-label">Active Users</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-number" id="todayMessages">0</span>
+                                    <span class="stat-label">Today's Messages</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    <!-- Update chat table headers -->
+<thead>
+    <tr>
+        <th>User (Ban)</th>
+        <th>Message</th>
+        <th>IP Address</th>
+        <th>Time</th>
+        <th>Actions</th>
+    </tr>
+</thead>
+
+                    <!-- Site Effects Section -->
+                   <!-- Site Effects Section -->
+<section id="section-effects" class="content-section">
+    <div class="section-header">
+        <h2><i class="fas fa-magic"></i> Site Effects & Themes</h2>
+        <p>Customize visual effects and themes</p>
+    </div>
+    
+    <div class="effects-grid">
+        <div class="effect-card">
+            <div class="effect-icon" style="background: linear-gradient(135deg, #4cc9f0, #2a9d8f);">
+                <i class="fas fa-snowflake"></i>
+            </div>
+            <div class="effect-content">
+                <h3>Snow Effect</h3>
+                <p>Enable snowfall animation for seasonal events</p>
+                <div style="display: flex; align-items: center; gap: 15px; margin-top: 15px;">
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="snow_effect" onchange="toggleEffect('snow', this.checked)">
+                        <span class="slider"></span>
+                    </div>
+                    <button class="btn-secondary" onclick="testSnowEffect()" style="padding: 8px 16px;">
+                        <i class="fas fa-play"></i> Test
+                    </button>
+                </div>
+                <small style="color: #94a3b8; font-size: 0.8rem; display: block; margin-top: 8px;">
+                    Best experienced in December
+                </small>
+            </div>
+        </div>
+        
+        <div class="effect-card">
+            <div class="effect-icon" style="background: linear-gradient(135deg, #f72585, #f8961e);">
+                <i class="fas fa-fireworks"></i>
+            </div>
+            <div class="effect-content">
+                <h3>Confetti Effect</h3>
+                <p>Celebratory confetti animation for New Year</p>
+                <div style="display: flex; align-items: center; gap: 15px; margin-top: 15px;">
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="confetti_effect" onchange="toggleEffect('confetti', this.checked)">
+                        <span class="slider"></span>
+                    </div>
+                    <button class="btn-secondary" onclick="testConfettiEffect()" style="padding: 8px 16px;">
+                        <i class="fas fa-play"></i> Test
+                    </button>
+                </div>
+                <small style="color: #94a3b8; font-size: 0.8rem; display: block; margin-top: 8px;">
+                    Perfect for New Year celebrations
+                </small>
+            </div>
+        </div>
+        
+        <div class="effect-card">
+            <div class="effect-icon" style="background: linear-gradient(135deg, #7209b7, #3a0ca3);">
+                <i class="fas fa-palette"></i>
+            </div>
+            <div class="effect-content">
+                <h3>Dark Theme</h3>
+                <p>Enable dark mode for all users</p>
+                <div class="toggle-switch" style="margin-top: 15px;">
+                    <input type="checkbox" id="dark_theme" onchange="toggleTheme('dark', this.checked)" checked>
+                    <span class="slider"></span>
+                </div>
+                <small style="color: #94a3b8; font-size: 0.8rem; display: block; margin-top: 8px;">
+                    Default theme optimized for studying
+                </small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="theme-preview">
+        <h3><i class="fas fa-eye"></i> Theme Preview</h3>
+        <div class="preview-grid">
+            <div class="preview-card" onclick="selectTheme('default')">
+                <div class="preview-header" style="background: linear-gradient(135deg, #4361ee, #7209b7);">
+                    <h4><i class="fas fa-star"></i> Default Theme</h4>
+                </div>
+                <div class="preview-body">
+                    <p>Professional blue & purple gradient</p>
+                    <small style="color: #94a3b8;">Current active theme</small>
+                </div>
+            </div>
+            
+            <div class="preview-card" onclick="selectTheme('dark')">
+                <div class="preview-header" style="background: #1a1f3a;">
+                    <h4><i class="fas fa-moon"></i> Dark Theme</h4>
+                </div>
+                <div class="preview-body">
+                    <p>Dark blue background for night study</p>
+                    <small style="color: #94a3b8;">Easy on eyes</small>
+                </div>
+            </div>
+            
+            <div class="preview-card" onclick="selectTheme('light')">
+                <div class="preview-header" style="background: #f8f9fa; color: #333;">
+                    <h4><i class="fas fa-sun"></i> Light Theme</h4>
+                </div>
+                <div class="preview-body">
+                    <p>Clean light mode for daytime</p>
+                    <small style="color: #666;">Bright and clear</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="form-card mt-20">
+        <h3><i class="fas fa-sliders-h"></i> Effects Controls</h3>
+        <p>Manually control the visual effects</p>
+        <div class="form-row">
+            <button class="btn-primary" onclick="testSnowEffect()">
+                <i class="fas fa-snowflake"></i> Start Snow Effect
+            </button>
+            <button class="btn-primary" onclick="testConfettiEffect()">
+                <i class="fas fa-fireworks"></i> Start Confetti Effect
+            </button>
+            <button class="btn-secondary" onclick="stopAllEffects()">
+                <i class="fas fa-stop"></i> Stop All Effects
+            </button>
+        </div>
+        <div class="form-row mt-10">
+            <div class="form-group">
+                <label>Effect Intensity</label>
+                <select id="effectIntensity" class="form-control">
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Auto-start seasonal effects</label>
+                <div class="toggle-switch">
+                    <input type="checkbox" id="auto_seasonal" checked>
+                    <span class="slider"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+                    <!-- Settings Section -->
+                    <section id="section-settings" class="content-section">
+                        <div class="section-header">
+                            <h2><i class="fas fa-cog"></i> System Settings</h2>
+                            <p>Configure system preferences and security</p>
+                        </div>
+                        
+                        <div class="settings-grid">
+                            <div class="setting-card">
+                                <h3><i class="fas fa-user-shield"></i> Security Settings</h3>
+                                <div class="setting-item">
+                                    <label>Session Timeout (minutes)</label>
+                                    <input type="number" id="sessionTimeout" value="30" min="5" max="120">
+                                </div>
+                                <div class="setting-item">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="twoFactorAuth">
+                                        <span class="checkmark"></span>
+                                        Enable Two-Factor Authentication
+                                    </label>
+                                </div>
+                                <button class="btn-primary">
+                                    <i class="fas fa-save"></i> Save Security Settings
+                                </button>
+                            </div>
+                            
+                            <div class="setting-card">
+                                <h3><i class="fas fa-database"></i> Database Settings</h3>
+                                <div class="setting-item">
+                                    <label>Backup Frequency</label>
+                                    <select id="backupFrequency">
+                                        <option value="daily">Daily</option>
+                                        <option value="weekly">Weekly</option>
+                                        <option value="monthly">Monthly</option>
+                                    </select>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="autoBackup" checked>
+                                        <span class="checkmark"></span>
+                                        Automatic Backups
+                                    </label>
+                                </div>
+                                <button class="btn-secondary" onclick="backupDatabase()">
+                                    <i class="fas fa-download"></i> Backup Now
+                                </button>
+                            </div>
+                            
+                            <div class="setting-card">
+                                <h3><i class="fas fa-bell"></i> Notification Settings</h3>
+                                <div class="setting-item">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="emailNotifications" checked>
+                                        <span class="checkmark"></span>
+                                        Email Notifications
+                                    </label>
+                                </div>
+                                <div class="setting-item">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="pushNotifications" checked>
+                                        <span class="checkmark"></span>
+                                        Push Notifications
+                                    </label>
+                                </div>
+                                <div class="setting-item">
+                                    <label>Notification Sound</label>
+                                    <select id="notificationSound">
+                                        <option value="default">Default</option>
+                                        <option value="chime">Chime</option>
+                                        <option value="bell">Bell</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Analytics Section -->
+                    <section id="section-analytics" class="content-section">
+                        <div class="section-header">
+                            <h2><i class="fas fa-chart-line"></i> Analytics & Reports</h2>
+                            <p>View system performance and user statistics</p>
+                        </div>
+                        
+                        <div class="analytics-grid">
+                            <div class="chart-card">
+                                <h3><i class="fas fa-chart-bar"></i> User Activity</h3>
+                                <div class="chart-container">
+                                    <canvas id="userActivityChart"></canvas>
+                                </div>
+                            </div>
+                            
+                            <div class="chart-card">
+                                <h3><i class="fas fa-chart-pie"></i> Exam Categories</h3>
+                                <div class="chart-container">
+                                    <canvas id="examCategoriesChart"></canvas>
+                                </div>
+                            </div>
+                            
+                            <div class="stats-card">
+                                <h3><i class="fas fa-chart-area"></i> System Performance</h3>
+                                <div class="performance-metrics">
+                                    <div class="metric">
+                                        <span class="metric-label">Response Time</span>
+                                        <span class="metric-value" id="responseTime">120ms</span>
+                                    </div>
+                                    <div class="metric">
+                                        <span class="metric-label">Uptime</span>
+                                        <span class="metric-value" id="uptime">99.8%</span>
+                                    </div>
+                                    <div class="metric">
+                                        <span class="metric-label">Active Sessions</span>
+                                        <span class="metric-value" id="activeSessions">42</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- JavaScript -->
+    <script type="module" src="admin.js"></script>
+    
+    <!-- Initialize Time -->
+    <script>
+        // Update time every second
+        function updateTime() {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            const timeStr = now.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit' 
+            });
+            
+            const dateEl = document.getElementById('currentDate');
+            const timeEl = document.getElementById('currentTime');
+            
+            if (dateEl) dateEl.textContent = dateStr;
+            if (timeEl) timeEl.textContent = timeStr;
+        }
+        
+        // Initialize
+        updateTime();
+        setInterval(updateTime, 1000);
+        
+        // Hide loading after 2 seconds
+        setTimeout(() => {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }, 2000);
+        
+        // Section switching
+        function showSection(section) {
+            // Hide all sections
+            document.querySelectorAll('.content-section').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // Remove active from all menu items
+            document.querySelectorAll('.sidebar-menu li').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // Show selected section
+            document.getElementById(`section-${section}`).classList.add('active');
+            
+            // Set active menu item
+            document.querySelector(`.sidebar-menu li[onclick*="${section}"]`).classList.add('active');
+        }
+    </script>
+</body>
+</html>
+
+
+
+
