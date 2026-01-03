@@ -688,31 +688,317 @@ async function banUser(userName) {
 // ==========================================
 // EFFECTS SYSTEM
 // ==========================================
+// ==========================================
+// ENHANCED EFFECTS SYSTEM
+// ==========================================
+
+// Load effects status
+async function loadEffectsStatus() {
+    try {
+        const { data, error } = await supabase
+            .from('site_settings')
+            .select('*')
+            .in('setting_key', ['snow_effect', 'confetti_effect', 'dark_theme']);
+        
+        if (error) {
+            console.log('Creating site_settings table...');
+            await createSiteSettingsTable();
+            return;
+        }
+        
+        console.log('Loaded effects settings:', data);
+        
+        if (data && data.length > 0) {
+            data.forEach(setting => {
+                const checkbox = document.getElementById(`${setting.setting_key}`);
+                if (checkbox) {
+                    checkbox.checked = setting.is_enabled;
+                    console.log(`Set ${setting.setting_key} to: ${setting.is_enabled}`);
+                }
+            });
+        } else {
+            // Insert default settings if table is empty
+            await insertDefaultSettings();
+        }
+    } catch (error) {
+        console.error('Error loading effects status:', error);
+        await createSiteSettingsTable();
+    }
+}
+
+// Create site_settings table if it doesn't exist
+async function createSiteSettingsTable() {
+    try {
+        // This would be handled by the SQL setup
+        // Just insert default settings
+        await insertDefaultSettings();
+    } catch (error) {
+        console.error('Error creating settings table:', error);
+    }
+}
+
+// Insert default settings
+async function insertDefaultSettings() {
+    try {
+        const defaultSettings = [
+            { setting_key: 'snow_effect', setting_value: 'false', is_enabled: false },
+            { setting_key: 'confetti_effect', setting_value: 'false', is_enabled: false },
+            { setting_key: 'dark_theme', setting_value: 'true', is_enabled: true }
+        ];
+        
+        const { error } = await supabase
+            .from('site_settings')
+            .insert(defaultSettings);
+        
+        if (error) throw error;
+        
+        console.log('Default settings inserted');
+        
+        // Update checkboxes
+        defaultSettings.forEach(setting => {
+            const checkbox = document.getElementById(setting.setting_key);
+            if (checkbox) {
+                checkbox.checked = setting.is_enabled;
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error inserting default settings:', error);
+    }
+}
+
+// Toggle Effect - FIXED VERSION
 async function toggleEffect(effect, enabled) {
+    console.log(`Toggling ${effect} to: ${enabled}`);
+    
     showLoading(true);
     
+    try {
+        // First check if setting exists
+        const { data: existing } = await supabase
+            .from('site_settings')
+            .select('*')
+            .eq('setting_key', `${effect}_effect`)
+            .single();
+        
+        let result;
+        
+        if (existing) {
+            // Update existing setting
+            result = await supabase
+                .from('site_settings')
+                .update({
+                    setting_value: enabled ? 'true' : 'false',
+                    is_enabled: enabled,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('setting_key', `${effect}_effect`);
+        } else {
+            // Insert new setting
+            result = await supabase
+                .from('site_settings')
+                .insert({
+                    setting_key: `${effect}_effect`,
+                    setting_value: enabled ? 'true' : 'false',
+                    is_enabled: enabled,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                });
+        }
+        
+        const { error } = result;
+        
+        if (error) {
+            console.error('Supabase error:', error);
+            throw error;
+        }
+        
+        const effectName = effect === 'snow' ? 'Snow effect' : 'Confetti effect';
+        const message = `${effectName} ${enabled ? 'enabled' : 'disabled'} successfully!`;
+        
+        showToast(message, 'success');
+        
+        // Update the checkbox state to match
+        const checkbox = document.getElementById(`${effect}_effect`);
+        if (checkbox) {
+            checkbox.checked = enabled;
+        }
+        
+        // Show visual feedback
+        if (enabled) {
+            if (effect === 'snow') {
+                showEffectPreview('snow');
+            } else if (effect === 'confetti') {
+                showEffectPreview('confetti');
+            }
+        }
+        
+    } catch (error) {
+        console.error('Error toggling effect:', error);
+        showToast('Failed to update effect: ' + error.message, 'error');
+        
+        // Revert checkbox state
+        const checkbox = document.getElementById(`${effect}_effect`);
+        if (checkbox) {
+            checkbox.checked = !enabled;
+        }
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Show effect preview
+function showEffectPreview(effect) {
+    const previewDiv = document.getElementById('effectPreview');
+    if (!previewDiv) {
+        // Create preview container
+        const container = document.createElement('div');
+        container.id = 'effectPreview';
+        container.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1001;
+            pointer-events: none;
+        `;
+        document.body.appendChild(container);
+    }
+    
+    const preview = document.getElementById('effectPreview');
+    preview.innerHTML = '';
+    
+    if (effect === 'snow') {
+        preview.innerHTML = `
+            <div style="
+                background: rgba(30, 41, 59, 0.9);
+                border-radius: 20px;
+                padding: 30px;
+                text-align: center;
+                border: 2px solid #4361ee;
+                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+                animation: fadeIn 0.3s ease;
+            ">
+                <div style="font-size: 4rem; margin-bottom: 20px;">❄️</div>
+                <h3 style="color: white; margin-bottom: 10px;">Snow Effect Enabled</h3>
+                <p style="color: #cbd5e1;">Snow animation will appear on the main site</p>
+            </div>
+        `;
+    } else if (effect === 'confetti') {
+        preview.innerHTML = `
+            <div style="
+                background: rgba(30, 41, 59, 0.9);
+                border-radius: 20px;
+                padding: 30px;
+                text-align: center;
+                border: 2px solid #f72585;
+                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+                animation: fadeIn 0.3s ease;
+            ">
+                <div style="font-size: 4rem; margin-bottom: 20px;">🎉</div>
+                <h3 style="color: white; margin-bottom: 10px;">Confetti Effect Enabled</h3>
+                <p style="color: #cbd5e1;">Confetti animation will appear on the main site</p>
+            </div>
+        `;
+    }
+    
+    // Remove preview after 3 seconds
+    setTimeout(() => {
+        if (preview) {
+            preview.style.animation = 'fadeOut 0.3s ease';
+            setTimeout(() => {
+                if (preview.parentElement) {
+                    preview.parentElement.removeChild(preview);
+                }
+            }, 300);
+        }
+    }, 3000);
+}
+
+// Test Effects
+function testSnowEffect() {
+    showEffectPreview('snow');
+    showToast('Testing snow effect... Check main site!', 'info');
+}
+
+function testConfettiEffect() {
+    showEffectPreview('confetti');
+    showToast('Testing confetti effect... Check main site!', 'info');
+}
+
+function stopAllEffects() {
+    const preview = document.getElementById('effectPreview');
+    if (preview && preview.parentElement) {
+        preview.parentElement.removeChild(preview);
+    }
+    showToast('Effects stopped', 'info');
+}
+
+// Toggle Theme
+async function toggleTheme(theme, enabled) {
     try {
         const { error } = await supabase
             .from('site_settings')
             .upsert({
-                setting_key: `${effect}_effect`,
+                setting_key: `${theme}_theme`,
                 setting_value: enabled ? 'true' : 'false',
-                is_enabled: enabled
+                is_enabled: enabled,
+                updated_at: new Date().toISOString()
             }, {
                 onConflict: 'setting_key'
             });
         
         if (error) throw error;
         
-        const effectName = effect === 'snow' ? 'Snow effect' : 'Confetti effect';
-        showToast(`${effectName} ${enabled ? 'enabled' : 'disabled'}!`, 'success');
+        showToast(`${theme === 'dark' ? 'Dark' : 'Light'} theme ${enabled ? 'enabled' : 'disabled'}!`, 'success');
         
     } catch (error) {
-        console.error('Error toggling effect:', error);
-        showToast('Failed to update effect setting', 'error');
-    } finally {
-        showLoading(false);
+        console.error('Error toggling theme:', error);
+        showToast('Failed to update theme', 'error');
     }
+}
+
+// Select Theme
+function selectTheme(theme) {
+    // Update all theme checkboxes
+    const checkboxes = {
+        dark: document.getElementById('darkTheme'),
+        light: document.getElementById('lightTheme'),
+        default: document.getElementById('defaultTheme')
+    };
+    
+    // Uncheck all
+    Object.values(checkboxes).forEach(cb => {
+        if (cb) cb.checked = false;
+    });
+    
+    // Check selected theme
+    if (checkboxes[theme]) {
+        checkboxes[theme].checked = true;
+    }
+    
+    // Show preview
+    let previewMessage = '';
+    let previewEmoji = '';
+    
+    switch(theme) {
+        case 'dark':
+            previewMessage = 'Dark theme selected';
+            previewEmoji = '🌙';
+            break;
+        case 'light':
+            previewMessage = 'Light theme selected';
+            previewEmoji = '☀️';
+            break;
+        default:
+            previewMessage = 'Default theme selected';
+            previewEmoji = '🎨';
+    }
+    
+    showToast(`${previewEmoji} ${previewMessage}. Changes will apply on refresh.`, 'info');
+    
+    // Save to database
+    toggleTheme(theme, true);
 }
 
 // ==========================================
@@ -914,3 +1200,4 @@ window.showSection = function(section) {
 window.viewNotification = function(id) {
     showToast('View feature coming soon', 'info');
 };
+
